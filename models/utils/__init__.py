@@ -1,1 +1,1 @@
-from anchor import anchor2bbox
+from .anchor import anchor2bbox

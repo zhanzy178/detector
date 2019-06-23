@@ -15,5 +15,5 @@ class FasterRCNN(nn.Module):
 
     def forward(self, imgs, gt_bboxes=None, gt_labels=None):
         feats = self.backbone(imgs)
-        proposals, obj_cls_scores, obj_reg_scores, \
-        obj_cls_losses, obj_reg_losses = self.rpn_head(feats, gt_bboxes, gt_labels)
+        proposals, obj_cls_scores, \
+        obj_cls_losses, obj_reg_losses = self.rpn_head(feats, gt_bboxes)

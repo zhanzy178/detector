@@ -1,1 +1,1 @@
-from rpn_head import RPNHead
+from .rpn_head import RPNHead

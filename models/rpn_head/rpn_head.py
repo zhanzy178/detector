@@ -37,7 +37,7 @@ class RPNHead(nn.Module):
         # generate anchors
         anchors, anchors_ignore = self.generate_anchors(obj_reg_scores)
 
-        # gernerate regresion results, bbox proposals
+        # generate regresion results, bbox proposals
         batch_size = obj_reg_scores.size(0)
         anchors = anchors.contiguous().view(batch_size, -1, 4)
         anchors_ignore = anchors_ignore.contiguous().view(batch_size, -1)

@@ -2,6 +2,8 @@ import torch.nn as nn
 import torch
 from math import *
 from models.utils.anchor import anchor2bbox
+from models.assigner import assign_bbox
+from models.sampler import random_sample_pos_neg
 
 class RPNHead(nn.Module):
     """RPNHead Region Proposal Network to predict region proposal"""
@@ -26,6 +28,12 @@ class RPNHead(nn.Module):
         self.obj_cls = nn.Conv2d(512, 2*self.anchor_template_len, kernel_size=1, stride=1)
         self.obj_reg = nn.Conv2d(512, 4*self.anchor_template_len, kernel_size=1, stride=1)
 
+        self.pos_iou_thr = 0.7
+        self.neg_iou_thr = 0.3
+
+        self.sample_num = 256
+        self.pos_sample_rate = 0.5
+
     def forward(self, feature_maps, gt_bboxes=None):
         # network forward
         f = self.conv(feature_maps)
@@ -48,20 +56,22 @@ class RPNHead(nn.Module):
         # clip bbox outliers in test
         if not self.training:
             proposals_corner = proposals.clone()
-            proposals_corner[:, :, [0, 1]] -= proposals[:, :, [2, 3]]
-            proposals_corner[:, :, [2, 3]] += proposals[:, :, [0, 1]]
+            proposals_corner[:, :, [0, 1]] -= proposals[:, :, [2, 3]]/2
+            proposals_corner[:, :, [2, 3]] += proposals_corner[:, :, [0, 1]]
             proposals_corner[:, [0, 2]] = proposals_corner[:, [0, 2]].clamp(0, feature_maps.size(2)*self.anchor_stride[0])
             proposals_corner[:, [1, 3]] = proposals_corner[:, [1, 3]].clamp(0, feature_maps.size(3)*self.anchor_stride[0])
 
-            proposals[:, :, [2, 3]] = (proposals_corner[:, :, [2, 3]] - proposals_corner[:, :, [0, 1]])/2
-            proposals[:, :, [0, 1]] += proposals[:, :, [2, 3]]
+            proposals[:, :, [2, 3]] = (proposals_corner[:, :, [2, 3]] - proposals_corner[:, :, [0, 1]])
+            proposals[:, :, [0, 1]] += proposals[:, :, [2, 3]]/2
 
         # compute loss in train
         obj_cls_losses, obj_reg_losses = None, None
         if self.training:
-            # TODO: compute RPN loss
-            pass
-        import pdb; pdb.set_trace(); pass
+            # TODO: mini-batch error
+            for b in range(anchors.size(0)):
+                assign_result = assign_bbox(anchors[b], anchors_ignore[b], gt_bboxes[b], self.pos_iou_thr, self.neg_iou_thr)
+                pos_ind, neg_ind = random_sample_pos_neg(assign_result, self.sample_num, self.pos_sample_rate)
+                obj_cls_losses, obj_reg_losses = self.loss(obj_cls_score, obj_reg_score, anchor, gt_bbox, assign_results, pos_ind, neg_ind)
 
         return proposals, obj_cls_scores, obj_cls_losses, obj_reg_losses
 
@@ -93,3 +103,6 @@ class RPNHead(nn.Module):
             anchors_ignore[(anchors_corner[..., 0]<0) | (anchors_corner[..., 1]<0) | (anchors_corner[..., 2]<0) | (anchors_corner[..., 3]<0)] = 1
 
         return anchors, anchors_ignore
+
+    def loss(self, obj_cls_score, obj_reg_score, anchor, gt_bbox, assign_results, pos_ind, neg_ind):
+        pass

@@ -68,10 +68,18 @@ class RPNHead(nn.Module):
         obj_cls_losses, obj_reg_losses = None, None
         if self.training:
             # TODO: mini-batch error
+            assign_results = None
+            base = 0
             for b in range(anchors.size(0)):
                 assign_result = assign_bbox(anchors[b], anchors_ignore[b], gt_bboxes[b], self.pos_iou_thr, self.neg_iou_thr)
-                pos_ind, neg_ind = random_sample_pos_neg(assign_result, self.sample_num, self.pos_sample_rate)
-                obj_cls_losses, obj_reg_losses = self.loss(obj_cls_score, obj_reg_score, anchor, gt_bbox, assign_results, pos_ind, neg_ind)
+                if assign_results is None:
+                    assign_results = assign_result
+                else:
+                    assign_result[(assign_result > 0).nonzero()] += base
+                    assign_results = torch.cat([assign_results, assign_result])
+                base += gt_bboxes[b].size(0)
+            pos_ind, neg_ind = random_sample_pos_neg(assign_results.view(-1), self.sample_num, self.pos_sample_rate)
+            obj_cls_losses, obj_reg_losses = self.loss(obj_cls_scores.view(-1, 2), obj_reg_scores.view(-1, 4), anchors.view(-1, 4), gt_bboxes.view(-1, 4), assign_results, pos_ind, neg_ind)
 
         return proposals, obj_cls_scores, obj_cls_losses, obj_reg_losses
 
@@ -105,4 +113,13 @@ class RPNHead(nn.Module):
         return anchors, anchors_ignore
 
     def loss(self, obj_cls_score, obj_reg_score, anchor, gt_bbox, assign_results, pos_ind, neg_ind):
-        pass
+        # object classify loss
+        cls_num = pos_ind.size(0) + neg_ind.size(0)
+        cls_score_sam_ind = assign_results[torch.cat([pos_ind, neg_ind])].view(-1)-1
+        cls_target = obj_reg_score.new_zeros([cls_num], dtype=torch.long)
+        cls_target[:pos_ind.size(0)] = 1
+
+        cls_losser = nn.CrossEntropyLoss()
+        cls_losses = cls_losser(obj_cls_score[cls_score_sam_ind], cls_target)
+
+        # TODO: proposal bounding box regression loss

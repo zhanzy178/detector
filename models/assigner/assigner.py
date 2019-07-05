@@ -1,7 +1,9 @@
 from models.utils import bbox_overlap
 
 def assign_bbox(proposals, proposals_ignore, gts, pos_iou_thr, neg_iou_thr):
-    """assign proposal positive, negative and ignore according to gt."""
+    """assign proposal positive, negative and ignore according to gt.
+    """
+
     iou = bbox_overlap(proposals, gts)
     max_value, max_ind = iou.max(dim=1)
 
@@ -16,7 +18,6 @@ def assign_bbox(proposals, proposals_ignore, gts, pos_iou_thr, neg_iou_thr):
 
     # assign gt highest iou bbox
     gt_max_value, gt_max_ind = iou.max(dim=0)
-    print(iou.max(dim=0))
     for i in range(len(gt_max_ind)):
         if gt_max_value[i] >= pos_iou_thr and proposals_ignore[gt_max_ind[i]] == 0:
             assign_result[gt_max_ind[i]] = i + 1

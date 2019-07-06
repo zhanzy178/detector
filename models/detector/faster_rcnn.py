@@ -10,7 +10,6 @@ class FasterRCNN(nn.Module):
         super(FasterRCNN, self).__init__()
         self.backbone = vgg16_bn(pretrained=True)
         self.rpn_head = RPNHead()
-        #TODO: roi feat extractor
         #TODO: bbox head
 
     def forward(self, imgs, gt_bboxes=None, gt_labels=None):

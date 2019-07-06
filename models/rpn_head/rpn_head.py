@@ -67,7 +67,6 @@ class RPNHead(nn.Module):
         # compute loss in train
         obj_cls_losses, obj_reg_losses = None, None
         if self.training:
-            # TODO: mini-batch error
             assign_results = None
             base = 0
             for b in range(anchors.size(0)):
@@ -122,4 +121,16 @@ class RPNHead(nn.Module):
         cls_losser = nn.CrossEntropyLoss()
         cls_losses = cls_losser(obj_cls_score[cls_score_sam_ind], cls_target)
 
-        # TODO: proposal bounding box regression loss
+        # proposal bounding box regression loss
+        pos_ind = pos_ind.view(-1)
+        pos_anchor = anchor[pos_ind]
+        pos_gt = gt_bbox[assign_results[pos_ind]-1]
+        pos_reg_score = obj_reg_score[pos_ind]
+        gt_score = pos_gt.clone()
+        gt_score[:, [0, 1]] = (gt_score[:, [0, 1]] - pos_anchor[:, [0, 1]]) / pos_anchor[:, [2, 3]]
+        gt_score[:, [2, 3]] = (gt_score[:, [2, 3]] / pos_anchor[:, [2, 3]]).log()
+
+        reg_losser = nn.SmoothL1Loss()
+        reg_losses = reg_losser(pos_reg_score, gt_score)
+
+        return cls_losses, reg_losses

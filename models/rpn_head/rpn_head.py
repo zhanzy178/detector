@@ -121,6 +121,8 @@ class RPNHead(nn.Module):
         cls_losser = nn.CrossEntropyLoss()
         cls_losses = cls_losser(obj_cls_score[cls_score_sam_ind], cls_target)
 
+        import pdb; pdb.set_trace()
+
         # proposal bounding box regression loss
         pos_ind = pos_ind.view(-1)
         pos_anchor = anchor[pos_ind]

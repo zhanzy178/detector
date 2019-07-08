@@ -5,6 +5,9 @@ def bbox_overlap(bbox1, bbox2):
         The input bbox in format xywh.
     """
 
+    if bbox1.size(0) == 0 or bbox2.size(0) == 0:
+        return None
+
     # convert format to ltrb
     bbox_corner1 = bbox1.clone()
     bbox_corner2 = bbox2.clone()

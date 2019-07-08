@@ -77,6 +77,7 @@ class RPNHead(nn.Module):
                     assign_result[(assign_result > 0).nonzero()] += base
                     assign_results = torch.cat([assign_results, assign_result])
                 base += gt_bboxes[b].size(0)
+
             pos_ind, neg_ind = random_sample_pos_neg(assign_results.view(-1), self.sample_num, self.pos_sample_rate)
             obj_cls_losses, obj_reg_losses = self.loss(obj_cls_scores.view(-1, 2), obj_reg_scores.view(-1, 4), anchors.view(-1, 4), gt_bboxes.view(-1, 4), assign_results, pos_ind, neg_ind)
 
@@ -93,6 +94,7 @@ class RPNHead(nn.Module):
 
         # generate anchors from ratio scale and stride
         # anchors: size=(B, W, H, anchor_ratio * anchor_scale, 4)
+
         B, W, H, N, _ = obj_reg_scores.size()
         assert self.anchor_template_len == N
         anchors = obj_reg_scores.new_zeros(size=(B, W, H, self.anchor_template_len, 4))
@@ -105,9 +107,10 @@ class RPNHead(nn.Module):
         if self.training: # ignore outliers
             anchors_corner = anchors.clone()
             imgs_size = anchors_corner.new_tensor([W*self.anchor_stride[0], H*self.anchor_stride[0]])
-            anchors_corner[..., [0, 1]] -= anchors[..., [2, 3]]
-            anchors_corner[..., [2, 3]] = imgs_size - anchors[..., [0, 1]] - anchors_corner[..., [2, 3]]
+            anchors_corner[..., [0, 1]] -= anchors[..., [2, 3]]/2
+            anchors_corner[..., [2, 3]] = imgs_size - anchors[..., [0, 1]] - anchors_corner[..., [2, 3]]/2
             anchors_ignore[(anchors_corner[..., 0]<0) | (anchors_corner[..., 1]<0) | (anchors_corner[..., 2]<0) | (anchors_corner[..., 3]<0)] = 1
+
 
         return anchors, anchors_ignore
 
@@ -121,7 +124,6 @@ class RPNHead(nn.Module):
         cls_losser = nn.CrossEntropyLoss()
         cls_losses = cls_losser(obj_cls_score[cls_score_sam_ind], cls_target)
 
-        import pdb; pdb.set_trace()
 
         # proposal bounding box regression loss
         pos_ind = pos_ind.view(-1)
@@ -134,5 +136,7 @@ class RPNHead(nn.Module):
 
         reg_losser = nn.SmoothL1Loss()
         reg_losses = reg_losser(pos_reg_score, gt_score)
+        # when gt_score.size(0) = 0, reg_losses will be nan
+
 
         return cls_losses, reg_losses

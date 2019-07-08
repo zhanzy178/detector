@@ -18,7 +18,11 @@ class FasterRCNN(nn.Module):
         feats = self.backbone(imgs)
         proposals, obj_cls_scores, \
         obj_cls_losses, obj_reg_losses = self.rpn_head(feats, gt_bboxes)
-        obj_scores = nn.functional.softmax(obj_cls_scores)
-        _, sorted_ind = obj_scores[:, 0].sort()
 
-        return proposals[sorted_ind[:self.rpn_proposal_num]], obj_scores[sorted_ind[:self.rpn_proposal_num]]
+        obj_scores = nn.functional.softmax(obj_cls_scores, dim=1)
+        obj_scores, sorted_ind = obj_scores[:, :, 0].sort()
+
+        proposals = proposals.gather(1, sorted_ind[..., None].repeat((1, 1, 4)))[:, :self.rpn_proposal_num]
+        obj_scores = obj_scores[:, :self.rpn_proposal_num]
+
+        return proposals, obj_scores, obj_cls_losses, obj_reg_losses

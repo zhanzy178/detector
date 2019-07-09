@@ -19,6 +19,6 @@ class FasterRCNN(nn.Module):
         feats = self.backbone(imgs)
         proposals, obj_cls_scores, \
         obj_cls_losses, obj_reg_losses = self.rpn_head(feats, gt_bboxes)
-        obj_scores = nn.functional.softmax(obj_cls_scores, dim=1)
+        obj_scores = nn.functional.softmax(obj_cls_scores, dim=2)
         proposals, obj_scores = nms(proposals, obj_scores, nms_iou_thr=0.7)
         return proposals, obj_scores, obj_cls_losses, obj_reg_losses

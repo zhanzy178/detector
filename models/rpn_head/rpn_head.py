@@ -56,13 +56,12 @@ class RPNHead(nn.Module):
         # clip bbox outliers in test
         if not self.training:
             proposals_corner = proposals.clone()
-            proposals_corner[:, :, [0, 1]] -= proposals[:, :, [2, 3]]/2
-            proposals_corner[:, :, [2, 3]] += proposals_corner[:, :, [0, 1]]
-            proposals_corner[:, [0, 2]] = proposals_corner[:, [0, 2]].clamp(0, feature_maps.size(2)*self.anchor_stride[0])
-            proposals_corner[:, [1, 3]] = proposals_corner[:, [1, 3]].clamp(0, feature_maps.size(3)*self.anchor_stride[0])
-
-            proposals[:, :, [2, 3]] = (proposals_corner[:, :, [2, 3]] - proposals_corner[:, :, [0, 1]])
-            proposals[:, :, [0, 1]] += proposals[:, :, [2, 3]]/2
+            proposals_corner[..., [0, 1]] -= proposals[..., [2, 3]]/2
+            proposals_corner[..., [2, 3]] += proposals_corner[..., [0, 1]]
+            proposals_corner[..., [0, 2]] = proposals_corner[..., [0, 2]].clamp(0, feature_maps.size(2)*self.anchor_stride[0])
+            proposals_corner[..., [1, 3]] = proposals_corner[..., [1, 3]].clamp(0, feature_maps.size(3)*self.anchor_stride[0])
+            proposals[..., [2, 3]] = (proposals_corner[..., [2, 3]] - proposals_corner[..., [0, 1]])
+            proposals[..., [0, 1]] = proposals_corner[..., [0, 1]] + proposals[..., [2, 3]]/2
 
         # compute loss in train
         obj_cls_losses, obj_reg_losses = None, None

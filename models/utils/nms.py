@@ -6,8 +6,10 @@ def nms(bboxes, scores, nms_iou_thr = 0.7):
     Input bboxes array: batch_size x num x 4
     Output bboxes list: every item in list is nms result
     """
-    scores, sorted_ind = scores[:, :, 0].sort()
+
+    _, sorted_ind = scores[..., 0].sort()
     bboxes = bboxes.gather(1, sorted_ind[..., None].repeat((1, 1, 4)))
+    scores = scores[..., 1].gather(1, sorted_ind)
 
     nms_bboxes = []
     nms_scores = []
@@ -20,7 +22,7 @@ def nms(bboxes, scores, nms_iou_thr = 0.7):
 
         for i, iou_row in enumerate(iou):
             if suppression[i] == 1: continue
-            suppression[(iou_row>0.7).nonzero()] = 1
+            suppression[(iou_row > nms_iou_thr).nonzero()] = 1
             suppression[i] = 0
 
         left_ind = (suppression==0).nonzero().view(-1)

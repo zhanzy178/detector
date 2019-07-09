@@ -1,5 +1,6 @@
 from models.backbone import vgg16_bn
 from models.rpn_head import RPNHead
+from models.utils import nms
 import torch.nn as nn
 
 class FasterRCNN(nn.Module):
@@ -18,11 +19,6 @@ class FasterRCNN(nn.Module):
         feats = self.backbone(imgs)
         proposals, obj_cls_scores, \
         obj_cls_losses, obj_reg_losses = self.rpn_head(feats, gt_bboxes)
-
         obj_scores = nn.functional.softmax(obj_cls_scores, dim=1)
-        obj_scores, sorted_ind = obj_scores[:, :, 0].sort()
-
-        proposals = proposals.gather(1, sorted_ind[..., None].repeat((1, 1, 4)))[:, :self.rpn_proposal_num]
-        obj_scores = obj_scores[:, :self.rpn_proposal_num]
-
+        proposals, obj_scores = nms(proposals, obj_scores, nms_iou_thr=0.7)
         return proposals, obj_scores, obj_cls_losses, obj_reg_losses

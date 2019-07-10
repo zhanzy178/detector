@@ -29,7 +29,7 @@ def assign_bbox(proposals, proposals_ignore, gts, pos_iou_thr, neg_iou_thr):
     for i in range(len(gt_max_ind)):
         # avoid all zeros iou assign, this may result in many positive sample iou less than 0.3
         # min_pos_iou = 0
-        if gt_max_iou[i] > 0:
+        if gt_max_iou[i] > 0.3:
             max_iou_ind = iou[:, i] == gt_max_iou[i]
 
             # One gt may match multi nearest anchors, and we assign this anchor to its nearest gt,

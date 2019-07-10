@@ -15,10 +15,10 @@ class FasterRCNN(nn.Module):
 
         self.rpn_proposal_num = 2000
 
-    def forward(self, imgs, gt_bboxes=None, gt_labels=None):
-        feats = self.backbone(imgs)
+    def forward(self, img, img_meta, gt_bboxes=None, gt_labels=None):
+        feat = self.backbone(img)
         proposals, obj_cls_scores, \
-        obj_cls_losses, obj_reg_losses = self.rpn_head(feats, gt_bboxes)
+        obj_cls_losses, obj_reg_losses = self.rpn_head(feat, img_meta, gt_bboxes)
         obj_scores = nn.functional.softmax(obj_cls_scores, dim=2)
         proposals, obj_scores = nms(proposals, obj_scores, nms_iou_thr=0.7)
         return proposals, obj_scores, obj_cls_losses, obj_reg_losses

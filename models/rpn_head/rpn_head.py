@@ -10,7 +10,7 @@ class RPNHead(nn.Module):
     def __init__(self):
         super(RPNHead, self).__init__()
 
-        self.anchor_ratio = [0.5, 1.0, 1.5] # ratio is h / w
+        self.anchor_ratio = [0.5, 1.0, 2.0] # ratio is h / w
         self.anchor_scale = [128.0, 256.0, 512.0]
         self.anchor_stride = [16]
         self.anchor_template_len = len(self.anchor_ratio) * len(self.anchor_scale)
@@ -34,16 +34,17 @@ class RPNHead(nn.Module):
         self.sample_num = 256
         self.pos_sample_rate = 0.5
 
-    def forward(self, feature_maps, gt_bboxes=None):
+    def forward(self, feature_maps, img_meta, gt_bboxes=None):
         # network forward
         f = self.conv(feature_maps)
         obj_cls_scores = self.obj_cls(f).transpose(2, 3).transpose(1, 3)
         obj_reg_scores = self.obj_reg(f).transpose(2, 3).transpose(1, 3)
         obj_cls_scores = obj_cls_scores.view(*obj_cls_scores.size()[0:3], -1, 2)
-        obj_reg_scores = obj_reg_scores.view(*obj_reg_scores.size()[0:3], -1, 4) # size B, W, H, 9, 4
+        obj_reg_scores = obj_reg_scores.view(*obj_reg_scores.size()[0:3], -1, 4) # size B, H, W, 9, 4
 
         # generate anchors
-        anchors, anchors_ignore = self.generate_anchors(obj_reg_scores)
+        anchors, anchors_ignore = self.generate_anchors(obj_reg_scores, img_meta)
+        # DEBUG: torch.save(dict(anchors=anchors, anchors_ignore=anchors_ignore), 'anchor.pth')
 
         # generate regresion results, bbox proposals
         batch_size = obj_reg_scores.size(0)
@@ -55,13 +56,14 @@ class RPNHead(nn.Module):
 
         # clip bbox outliers in test
         if not self.training:
-            proposals_corner = proposals.clone()
-            proposals_corner[..., [0, 1]] -= proposals[..., [2, 3]]/2
-            proposals_corner[..., [2, 3]] += proposals_corner[..., [0, 1]]
-            proposals_corner[..., [0, 2]] = proposals_corner[..., [0, 2]].clamp(0, feature_maps.size(2)*self.anchor_stride[0])
-            proposals_corner[..., [1, 3]] = proposals_corner[..., [1, 3]].clamp(0, feature_maps.size(3)*self.anchor_stride[0])
-            proposals[..., [2, 3]] = (proposals_corner[..., [2, 3]] - proposals_corner[..., [0, 1]])
-            proposals[..., [0, 1]] = proposals_corner[..., [0, 1]] + proposals[..., [2, 3]]/2
+            for b, im_size in enumerate(img_meta['img_size']): # (w, h)
+                proposals_corner = proposals[b, ...].clone()
+                proposals_corner[..., [0, 1]] -= proposals[b, ..., [2, 3]]/2
+                proposals_corner[..., [2, 3]] += proposals_corner[..., [0, 1]]
+                proposals_corner[..., [0, 2]] = proposals_corner[..., [0, 2]].clamp(0, im_size[0])  # w
+                proposals_corner[..., [1, 3]] = proposals_corner[..., [1, 3]].clamp(0, im_size[1])  # h
+                proposals[b, ..., [2, 3]] = (proposals_corner[..., [2, 3]] - proposals_corner[..., [0, 1]])
+                proposals[b, ..., [0, 1]] = proposals_corner[..., [0, 1]] + proposals[..., [2, 3]]/2
 
         # compute loss in train
         obj_cls_losses, obj_reg_losses = None, None
@@ -71,45 +73,46 @@ class RPNHead(nn.Module):
             for b in range(anchors.size(0)):
                 assign_result = assign_bbox(anchors[b], anchors_ignore[b], gt_bboxes[b], self.pos_iou_thr, self.neg_iou_thr)
                 if assign_results is None:
-                    assign_results = assign_result
+                    assign_results = assign_result.view(1, -1)
                 else:
                     assign_result[(assign_result > 0).nonzero()] += base
-                    assign_results = torch.cat([assign_results, assign_result])
+                    assign_results = torch.cat([assign_results, assign_result.view(1, -1)])
                 base += gt_bboxes[b].size(0)
 
+            # DEBUG: torch.save(dict(anchors=anchors, assign_results=assign_results), 'assign_results.pth')
             pos_ind, neg_ind = random_sample_pos_neg(assign_results.view(-1), self.sample_num, self.pos_sample_rate)
-            obj_cls_losses, obj_reg_losses = self.loss(obj_cls_scores.view(-1, 2), obj_reg_scores.view(-1, 4), anchors.view(-1, 4), gt_bboxes.view(-1, 4), assign_results, pos_ind, neg_ind)
+            obj_cls_losses, obj_reg_losses = self.loss(obj_cls_scores.view(-1, 2), obj_reg_scores.view(-1, 4), anchors.view(-1, 4), gt_bboxes.view(-1, 4), assign_results.view(-1), pos_ind, neg_ind)
 
         return proposals, obj_cls_scores, obj_cls_losses, obj_reg_losses
 
 
-    def generate_anchors(self, obj_reg_scores):
+    def generate_anchors(self, obj_reg_scores, img_meta):
         """generate anchor xywh from predict scores
 
         Args:
-            obj_reg_scores: size=(B, W, H, 4 * anchor_ratio * anchor_scale)
+            obj_reg_scores: size=(B, H, W, 4 * anchor_ratio * anchor_scale)
 
         """
 
         # generate anchors from ratio scale and stride
-        # anchors: size=(B, W, H, anchor_ratio * anchor_scale, 4)
+        # anchors: size=(B, H, W, anchor_ratio * anchor_scale, 4)
 
-        B, W, H, N, _ = obj_reg_scores.size()
+        B, H, W, N, _ = obj_reg_scores.size()
         assert self.anchor_template_len == N
-        anchors = obj_reg_scores.new_zeros(size=(B, W, H, self.anchor_template_len, 4))
+        anchors = obj_reg_scores.new_zeros(size=(B, H, W, self.anchor_template_len, 4))
         anchors[:, :, :] = self.anchor_template
-        anchors_ignore = obj_reg_scores.new_zeros(size=(B, W, H, self.anchor_template_len), dtype=torch.long)
-        for wi in range(W):
-            for hi in range(H):
-                anchors[:, wi, hi, :, :] += obj_reg_scores.new_tensor([wi*self.anchor_stride[0], hi*self.anchor_stride[0], 0, 0])
+        anchors_ignore = obj_reg_scores.new_zeros(size=(B, H, W, self.anchor_template_len), dtype=torch.long)
+        for hi in range(H):
+            for wi in range(W):
+                anchors[:, hi, wi, :, :] += obj_reg_scores.new_tensor([wi*self.anchor_stride[0], hi*self.anchor_stride[0], 0, 0])  # x+w_delta, y+h_delta, w, h
 
         if self.training: # ignore outliers
-            anchors_corner = anchors.clone()
-            imgs_size = anchors_corner.new_tensor([W*self.anchor_stride[0], H*self.anchor_stride[0]])
-            anchors_corner[..., [0, 1]] -= anchors[..., [2, 3]]/2
-            anchors_corner[..., [2, 3]] = imgs_size - anchors[..., [0, 1]] - anchors_corner[..., [2, 3]]/2
-            anchors_ignore[(anchors_corner[..., 0]<0) | (anchors_corner[..., 1]<0) | (anchors_corner[..., 2]<0) | (anchors_corner[..., 3]<0)] = 1
-
+            for b, im_size in enumerate(img_meta['img_size'].cuda()):
+                anchors_corner = anchors[b, ...].clone()
+                anchors_corner[..., [0, 1]] -= anchors[b, ..., [2, 3]]/2
+                anchors_corner[..., [2, 3]] += anchors_corner[..., [0, 1]]
+                anchors_ignore[b, (anchors_corner[..., 0]<0) | (anchors_corner[..., 1]<0)
+                               | (anchors_corner[..., 2]>im_size[0]) | (anchors_corner[..., 3]>im_size[1])] = 1
 
         return anchors, anchors_ignore
 

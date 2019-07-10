@@ -45,10 +45,8 @@ class COCODataset(Dataset):
             bboxes, labels = self.anno_transform(bboxes, labels, img_meta)
             data.update(dict(gt_bboxes=bboxes, gt_labels=labels))
 
-        data.update(dict(img_meta=
-                         dict(
-                             img_id=img_id
-                         )))
+        img_meta['img_id'] = img_id
+        data.update(dict(img_meta=img_meta))
 
         return data
 
@@ -59,8 +57,9 @@ class COCODataset(Dataset):
         rescale_h = float(min(self.img_size))/img.shape[0] # H
         rescale_w = float(max(self.img_size))/img.shape[1] # W
         img_meta['scale_ratio'] = scale_ratio = min(rescale_h, rescale_w)
-        new_size = (int(scale_ratio*img.shape[0]+0.5), int(scale_ratio*img.shape[1]+0.5))
+        new_size = (int(scale_ratio*img.shape[1]+0.5), int(scale_ratio*img.shape[0]+0.5))  # new_size=(w, h)
         img = cv2.resize(img, new_size)
+        img_meta['img_size'] = np.array(new_size, dtype=np.float32)
 
         # normalize
         img = img.astype(np.float32)

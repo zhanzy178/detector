@@ -4,15 +4,16 @@ from math import *
 from models.utils.anchor import anchor2bbox
 from models.assigner import assign_bbox
 from models.sampler import random_sample_pos_neg
+import torch.nn.functional as F
 
 class RPNHead(nn.Module):
     """RPNHead Region Proposal Network to predict region proposal"""
-    def __init__(self):
+    def __init__(self, strides):
         super(RPNHead, self).__init__()
 
         self.anchor_ratio = [0.5, 1.0, 2.0] # ratio is h / w
         self.anchor_scale = [128.0, 256.0, 512.0]
-        self.anchor_stride = [16]
+        self.anchor_stride = strides
         self.anchor_template_len = len(self.anchor_ratio) * len(self.anchor_scale)
         self.anchor_template = torch.zeros(size=(self.anchor_template_len, 4), dtype=torch.float64)
         for ri, r in enumerate(self.anchor_ratio):
@@ -36,7 +37,7 @@ class RPNHead(nn.Module):
 
     def forward(self, feature_maps, img_meta, gt_bboxes=None):
         # network forward
-        f = self.conv(feature_maps)
+        f = F.relu(self.conv(feature_maps), inplace=True)
         obj_cls_scores = self.obj_cls(f).transpose(2, 3).transpose(1, 3)
         obj_reg_scores = self.obj_reg(f).transpose(2, 3).transpose(1, 3)
         obj_cls_scores = obj_cls_scores.view(*obj_cls_scores.size()[0:3], -1, 2)

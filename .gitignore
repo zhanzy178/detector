@@ -1,4 +1,7 @@
 *__pycache__*
 
+
+models/roi_pool/build
+
 *.pth
 *.pt

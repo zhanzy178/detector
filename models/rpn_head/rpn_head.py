@@ -56,7 +56,7 @@ class RPNHead(nn.Module):
 
         # clip bbox outliers in test
         if not self.training:
-            for b, im_size in enumerate(img_meta['img_size']): # (w, h)
+            for b, im_size in enumerate(img_meta['img_size']):  # (w, h)
                 proposals_corner = proposals[b, ...].clone()
                 proposals_corner[..., [0, 1]] -= proposals[b, ..., [2, 3]]/2
                 proposals_corner[..., [2, 3]] += proposals_corner[..., [0, 1]]
@@ -81,6 +81,7 @@ class RPNHead(nn.Module):
 
             # DEBUG: torch.save(dict(anchors=anchors, assign_results=assign_results), 'assign_results.pth')
             pos_ind, neg_ind = random_sample_pos_neg(assign_results.view(-1), self.sample_num, self.pos_sample_rate)
+            # DEBUG: torch.save(dict(anchors=anchors, assign_results=assign_results, pos_ind=pos_ind, neg_ind=neg_ind), 'sample_results.pth')
             obj_cls_losses, obj_reg_losses = self.loss(obj_cls_scores.view(-1, 2), obj_reg_scores.view(-1, 4), anchors.view(-1, 4), gt_bboxes.view(-1, 4), assign_results.view(-1), pos_ind, neg_ind)
 
         return proposals, obj_cls_scores, obj_cls_losses, obj_reg_losses
@@ -119,12 +120,11 @@ class RPNHead(nn.Module):
     def loss(self, obj_cls_score, obj_reg_score, anchor, gt_bbox, assign_results, pos_ind, neg_ind):
         # object classify loss
         cls_num = pos_ind.size(0) + neg_ind.size(0)
-        cls_score_sam_ind = assign_results[torch.cat([pos_ind, neg_ind])].view(-1)-1
+        sam_ind = torch.cat([pos_ind, neg_ind]).view(-1)
         cls_target = obj_reg_score.new_zeros([cls_num], dtype=torch.long)
         cls_target[:pos_ind.size(0)] = 1
-
         cls_losser = nn.CrossEntropyLoss()
-        cls_losses = cls_losser(obj_cls_score[cls_score_sam_ind], cls_target)
+        cls_losses = cls_losser(obj_cls_score[sam_ind], cls_target)
 
 
         # proposal bounding box regression loss

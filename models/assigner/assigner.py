@@ -4,8 +4,12 @@ import torch
 def assign_bbox(proposals, proposals_ignore, gts, pos_iou_thr, neg_iou_thr):
     """assign proposal positive, negative and ignore according to gt.
     """
-    nignore_ind = (proposals_ignore==0).nonzero().view(-1)
-    inside_proposals = proposals[nignore_ind]
+
+    if proposals_ignore is not None:
+        nignore_ind = (proposals_ignore==0).nonzero().view(-1)
+        inside_proposals = proposals[nignore_ind]
+    else:
+        inside_proposals = proposals
 
     iou = bbox_overlap(inside_proposals, gts)
     if iou is None:
@@ -29,7 +33,7 @@ def assign_bbox(proposals, proposals_ignore, gts, pos_iou_thr, neg_iou_thr):
     for i in range(len(gt_max_ind)):
         # avoid all zeros iou assign, this may result in many positive sample iou less than 0.3
         # min_pos_iou = 0
-        if gt_max_iou[i] > 0.3:
+        if gt_max_iou[i] > neg_iou_thr:
             max_iou_ind = iou[:, i] == gt_max_iou[i]
 
             # One gt may match multi nearest anchors, and we assign this anchor to its nearest gt,

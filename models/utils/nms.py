@@ -7,9 +7,9 @@ def nms(bboxes, scores, nms_iou_thr = 0.7):
     Output bboxes list: every item in list is nms result
     """
 
-    _, sorted_ind = scores[..., 0].sort()
+    _, sorted_ind = (-scores).sort()
     bboxes = bboxes.gather(1, sorted_ind[..., None].repeat((1, 1, 4)))
-    scores = scores[..., 1].gather(1, sorted_ind)
+    scores = scores.gather(1, sorted_ind)
 
     nms_bboxes = []
     nms_scores = []

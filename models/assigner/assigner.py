@@ -13,9 +13,12 @@ def assign_bbox(proposals, proposals_ignore, gts, pos_iou_thr, neg_iou_thr):
 
     iou = bbox_overlap(inside_proposals, gts)
     if iou is None:
-        assign_result = proposals.new_zeros(size=(proposals.size(0),), dtype=torch.long)-1
-        assign_result[nignore_ind] = 0
-        return assign_result
+        if proposals_ignore is not None:
+            assign_result_origin = assign_result.new_zeros(size=(proposals.size(0), ))
+            assign_result_origin[nignore_ind] = assign_result
+        else:
+            assign_result_origin = assign_result
+        return assign_result_origin
 
     anchor_max_iou, anchor_max_ind = iou.max(dim=1)
 
@@ -43,7 +46,10 @@ def assign_bbox(proposals, proposals_ignore, gts, pos_iou_thr, neg_iou_thr):
             assign_result[max_iou_ind] = anchor_max_ind[max_iou_ind]+1
 
     # map assign result to origin proposals size
-    assign_result_origin = assign_result.new_zeros(size=(proposals.size(0), ))
-    assign_result_origin[nignore_ind] = assign_result
+    if proposals_ignore is not None:
+        assign_result_origin = assign_result.new_zeros(size=(proposals.size(0), ))
+        assign_result_origin[nignore_ind] = assign_result
+    else:
+        assign_result_origin = assign_result
 
     return assign_result_origin

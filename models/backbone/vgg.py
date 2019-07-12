@@ -27,11 +27,38 @@ model_urls = {
 
 class VGG(nn.Module):
     """VGG Backbone"""
-    def __init__(self, features, init_weights=True):
+    def __init__(self, features, init_weights=True, frozen_layer_num=0):
         super(VGG, self).__init__()
         self.features = features
+        self.frozen_layer_num = frozen_layer_num
         if init_weights:
             self._initialize_weights()
+
+        self._freeze()
+
+    def _freeze(self):
+        frozen_conv_num = 0
+        for m in self.features.modules():
+            if isinstance(m, nn.Conv2d):
+                frozen_conv_num += 1
+                if frozen_conv_num > self.frozen_layer_num: break
+            elif isinstance(m, nn.BatchNorm2d):
+                m.eval()
+
+            for p in m.parameters():
+                p.requires_grad = False
+
+    def train(self, mode=True):
+        """Override train() for keep frozen layer norm eval"""
+        self.training = mode
+        conv_num = 0
+        for module in self.children():
+            if isinstance(module, nn.Conv2d):
+                conv_num += 1
+            if isinstance(module, nn.BatchNorm2d):
+                if conv_num <= self.frozen_layer_num: continue
+            module.train(mode)
+        return self
 
     def forward(self, x):
         x = self.features(x)

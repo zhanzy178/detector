@@ -8,6 +8,7 @@ from models.roi_pool import RoIPool
 from models.bbox_head import BBoxHead
 from models.assigner import assign_bbox
 from models.utils import proposal2bbox
+from models.sampler import random_sample_pos_neg
 
 class FasterRCNN(nn.Module):
     """Faster RCNN detector
@@ -16,8 +17,9 @@ class FasterRCNN(nn.Module):
     def __init__(self, num_classes):
         super(FasterRCNN, self).__init__()
         self.strides = [16]
+        self.frozen_layer_num = 2
 
-        self.backbone = vgg16_bn(pretrained=True)
+        self.backbone = vgg16_bn(pretrained=True, frozen_layer_num=self.frozen_layer_num)
         self.rpn_head = RPNHead(self.strides)
 
         self.roi_pool = RoIPool(out_size=7, spatial_scale=1.0/self.strides[0])
@@ -35,6 +37,8 @@ class FasterRCNN(nn.Module):
 
         self.bbox_nms_thr_iou = 0.5
         self.bbox_nms_score_thr = 0.05
+
+
 
     def forward(self, img, img_meta, gt_bboxes=None, gt_labels=None):
         feat = self.backbone(img)
@@ -56,32 +60,36 @@ class FasterRCNN(nn.Module):
             for b in range(len(proposals)):
                 assign_result = assign_bbox(proposals[b], None, gt_bboxes[b], self.pos_iou_thr, self.neg_iou_thr)
                 pos_ind, neg_ind = random_sample_pos_neg(assign_result.view(-1), self.sample_num, self.pos_sample_rate)
-                sam_ind = torch.cat(pos_ind, neg_ind)
+                sam_ind = torch.cat([pos_ind, neg_ind]).view(-1)
 
                 rois = proposals[b].clone()
                 rois[:, [0, 1]] -= rois[:, [2, 3]]
                 rois[:, [2, 3]] += rois[:, [0, 1]]
-                rois_feat = self.roi_pool(feat[b], rois[sam_ind])
+                batch_ind = rois.new_zeros((rois.size(0), 1))
+                rois = torch.cat([batch_ind, rois], dim=1)
+                rois_feat = self.roi_pool(feat[b, None], rois[sam_ind])
                 cls_scores, reg_scores = self.bbox_head(rois_feat)
 
                 # compute cls loss
                 cls_target = gt_labels.new_zeros((sam_ind.size(0), ))
-                cls_target[:pos_ind.size(0)] = gt_labels[b, assign_result[pos_ind]-1]
+                cls_target[:pos_ind.size(0)] = gt_labels[b, assign_result[pos_ind].view(-1)-1]
                 cls_losser = nn.CrossEntropyLoss()
-                cls_losses += cls_losser(cls_scores[sam_ind], cls_target)
+                cls_losses += cls_losser(cls_scores, cls_target)
 
                 # copmute reg loss
-                pos_gt = gt_bboxes[b, assign_result[pos_ind]-1]
-                pos_proposal = proposals[b, pos_ind]
-                reg_target = pos_gt.clone()
-                reg_target[:, [0, 1]] = (reg_target[:, [0, 1]] - pos_proposal[:, [0, 1]]) / pos_proposal[:, [2, 3]]
-                reg_target[:, [2, 3]] = (reg_target[:, [2, 3]] / pos_proposal[:, [2, 3]]).log()
-                pos_gt_labels = gt_labels[b, assign_result[pos_ind]-1]
-                reg_class_scores = reg_scores[b, pos_gt_labels*4:pos_gt_labels*4+4]
-                reg_losser = nn.SmoothL1Loss()
-                reg_losses += reg_losser(reg_class_scores, reg_target)
+                if pos_ind.size(0) > 0:
+                    pos_gt = gt_bboxes[b, assign_result[pos_ind].view(-1)-1]
+                    pos_proposal = proposals[b][pos_ind.view(-1)]
+                    reg_target = pos_gt.clone()
+                    reg_target[:, [0, 1]] = (reg_target[:, [0, 1]] - pos_proposal[:, [0, 1]]) / pos_proposal[:, [2, 3]]
+                    reg_target[:, [2, 3]] = (reg_target[:, [2, 3]] / pos_proposal[:, [2, 3]]).log()
+                    pos_gt_labels = gt_labels[b, assign_result[pos_ind].view(-1)-1]
+                    pos_gt_labels = pos_gt_labels.view(-1, 1, 1).repeat(1, 1, 4)
+                    reg_class_scores = reg_scores[:pos_ind.size(0)].view(pos_ind.size(0), -1, 4).gather(1, pos_gt_labels).view(-1, 4)
+                    reg_losser = nn.SmoothL1Loss()
+                    reg_losses += reg_losser(reg_class_scores, reg_target)
 
-            return cls_losses, reg_losses
+            return obj_cls_losses, obj_reg_losses, cls_losses, reg_losses
 
         else:  # test
             # convert to rois
@@ -90,6 +98,8 @@ class FasterRCNN(nn.Module):
                 rois = proposals[b].clone()
                 rois[:, [0, 1]] -= rois[:, [2, 3]]
                 rois[:, [2, 3]] += rois[:, [0, 1]]
+                batch_ind = rois.new_zeros((rois.size(0), 1))
+                rois = torch.cat([batch_ind, rois], dim=1)
 
                 # inference
                 rois_feat = self.roi_pool(feat[b], rois)

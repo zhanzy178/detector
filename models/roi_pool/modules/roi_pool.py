@@ -13,9 +13,9 @@ class RoIPool(Module):
     def forward(self, features, rois):
         """
 
-        :param features:
+        :param features: (batch, c, h, w)
         :type features:
-        :param rois: rois in format of (x1, y1, x2, y2)
+        :param rois: rois in format of (batch_ind, x1, y1, x2, y2)
         :type rois:
         :return:
         :rtype:

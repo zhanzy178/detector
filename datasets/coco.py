@@ -87,7 +87,7 @@ class COCODataset(Dataset):
             bboxes = np.array([a['bbox'] for a in anns if a['iscrowd']==0], dtype=np.float32)
             if bboxes.shape[0] != 0:
                 bboxes[:, [0, 1]] += bboxes[:, [2, 3]] / 2
-            labels = np.array([self.cats2label[a['category_id']] for a in anns if a['iscrowd']==0], dtype=np.int32)
+            labels = np.array([self.cats2label[a['category_id']] for a in anns if a['iscrowd']==0], dtype=np.int64)
 
             annotations.append((bboxes, labels))
         return annotations

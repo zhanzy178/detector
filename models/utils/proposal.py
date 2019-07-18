@@ -17,9 +17,9 @@ def proposal2bbox(proposals, reg_scores):
 
     assert proposals.size(0) == reg_scores.size(0)
     proposals_bbox = reg_scores.clone()
-    proposals_bbox[:, 0::4] = proposals_bbox[:, 0::4]*proposals[:, 2] + proposals[:, 0]
-    proposals_bbox[:, 1::4] = proposals_bbox[:, 1::4]*proposals[:, 3] + proposals[:, 1]
-    proposals_bbox[:, 2::4] = proposals_bbox[:, 2::4].exp() * proposals[:, 2]
-    proposals_bbox[:, 3::4] = proposals_bbox[:, 3::4].exp() * proposals[:, 3]
+    proposals_bbox[:, 0::4] = proposals_bbox[:, 0::4]*proposals[:, 2, None] + proposals[:, 0, None]
+    proposals_bbox[:, 1::4] = proposals_bbox[:, 1::4]*proposals[:, 3, None] + proposals[:, 1, None]
+    proposals_bbox[:, 2::4] = proposals_bbox[:, 2::4].exp() * proposals[:, 2, None]
+    proposals_bbox[:, 3::4] = proposals_bbox[:, 3::4].exp() * proposals[:, 3, None]
 
     return proposals_bbox

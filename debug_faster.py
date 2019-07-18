@@ -23,7 +23,7 @@ if __name__ == '__main__':
             print((obj_cls_losses + obj_reg_losses + cls_losses + reg_losses).item())
 
             if (iter+1) % 8 == 0:
-                torch.save(faster_rcnn.state_dict(), 'debug_rpn.pth')
+                torch.save(faster_rcnn.state_dict(), 'debug_faster.pth')
                 sgd_opt.step()
                 sgd_opt.zero_grad()
                 print('step', ep)

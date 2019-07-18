@@ -17,8 +17,9 @@ def nms(bboxes, scores, nms_iou_thr = 0.7):
         bbox_list = bboxes[b]
         score_list = scores[b]
         suppression = torch.zeros(size=(bbox_list.size(0), ), dtype=torch.long)
-
         iou = bbox_overlap(bbox_list, bbox_list)
+        if iou is None:
+            return None, None
 
         for i, iou_row in enumerate(iou):
             if suppression[i] == 1: continue

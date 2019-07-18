@@ -37,6 +37,7 @@ class FasterRCNN(nn.Module):
 
         self.bbox_nms_thr_iou = 0.5
         self.bbox_nms_score_thr = 0.05
+        self.bbox_nms_max_num = 300
 
 
 
@@ -93,8 +94,9 @@ class FasterRCNN(nn.Module):
 
         else:  # test
             # convert to rois
-            det_results = []
-            for b in range(1, len(proposals)):
+            det_bboxes_results = []
+            det_labels_results = []
+            for b in range(len(proposals)):
                 rois = proposals[b].clone()
                 rois[:, [0, 1]] -= rois[:, [2, 3]]
                 rois[:, [2, 3]] += rois[:, [0, 1]]
@@ -102,22 +104,38 @@ class FasterRCNN(nn.Module):
                 rois = torch.cat([batch_ind, rois], dim=1)
 
                 # inference
-                rois_feat = self.roi_pool(feat[b], rois)
+                rois_feat = self.roi_pool(feat[b, None], rois)
                 cls_scores, reg_scores = self.bbox_head(rois_feat)
 
                 # compute bbox xywh
-                cls_bboxes = proposal2bbox(proposals[b], cls_scores)
+                cls_bboxes = proposal2bbox(proposals[b], reg_scores)
                 softmax_cls_scores = F.softmax(cls_scores, dim=1)
 
                 # multiclass nms
-                img_det_results = []
-                for cls in range(len(cls_bboxes.size(1) // 4)):
-                    ind = softmax_cls_scores[:, cls] > self.nms_score_thr
+                img_det_bboxes = []
+                img_det_labels = []
+                for cls in range(1, cls_bboxes.size(1) // 4):
+                    ind = softmax_cls_scores[:, cls] > self.bbox_nms_score_thr
+                    if sum(ind) == 0:
+                        continue
+
                     scores = softmax_cls_scores[ind, cls]
                     bboxes = cls_bboxes[ind, cls*4:(cls+1)*4]
-                    det_bboxes, det_scores = nms(bboxes, scores)
-                    img_det_results.append(torch.cat((det_bboxes, det_scores.view(-1, 1)), dim=1))
+                    det_bboxes, det_scores = nms(bboxes[None, ...], scores[None, ...], self.bbox_nms_thr_iou)
+                    det_bboxes, det_scores = det_bboxes[0], det_scores[0]
+                    img_det_bboxes.append(torch.cat((det_bboxes, det_scores.view(-1, 1)), dim=1))
+                    img_det_labels.append(torch.zeros(size=(det_bboxes.size(0), ), dtype=torch.long) + cls)
 
-                det_results.append(img_det_results)
+                img_det_bboxes = torch.cat(img_det_bboxes)
+                img_det_labels = torch.cat(img_det_labels)
 
-            return det_results
+                _, sort_ind = (-img_det_bboxes[:, -1]).sort()
+                if img_det_bboxes.size(0) > self.bbox_nms_max_num:
+                    sort_ind = sort_ind[:self.bbox_nms_max_num]
+                img_det_bboxes = img_det_bboxes[sort_ind].cpu().numpy()
+                img_det_labels = img_det_labels[sort_ind].cpu().numpy()
+
+                det_bboxes_results.append(img_det_bboxes)
+                det_labels_results.append(img_det_labels)
+
+            return det_bboxes_results, det_labels_results

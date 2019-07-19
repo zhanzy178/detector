@@ -1,5 +1,6 @@
 from torch.utils.data import Dataset
 from pycocotools.coco import COCO
+from pycocotools.cocoeval import COCOeval
 import os
 import numpy as np
 import cv2
@@ -93,3 +94,34 @@ class COCODataset(Dataset):
         return annotations
 
 
+    def coco_result(self, det_bboxes_list, det_labels_list, img_id_list):
+        annotations = []
+        label2cats = {v:k for k, v in self.cats2label.items()}
+        for det_bboxes, det_labels, image_id in zip(det_bboxes_list, det_labels_list, img_id_list):
+            for bi in range(len(det_bboxes)):
+                bbox = det_bboxes[bi]
+                score = float(bbox[-1])
+                x1 = float(bbox[0] - bbox[2]/2)
+                y1 = float(bbox[1] - bbox[3]/2)
+                w = float(bbox[2])
+                h = float(bbox[3])
+                category_id = label2cats[int(det_labels[bi])]
+
+                annotations.append(dict(
+                    image_id=image_id,
+                    bbox=[x1, y1, w, h],
+                    score=score,
+                    category_id=category_id
+                ))
+
+        return annotations
+
+    def evaluate(self, result_file):
+        cocoDt = self.coco.loadRes(result_file)
+
+        # running evaluation
+        cocoEval = COCOeval(self.coco, cocoDt, 'bbox')
+        # cocoEval.params.imgIds = [self.img_ids[i] for i in range(8)]
+        cocoEval.evaluate()
+        cocoEval.accumulate()
+        cocoEval.summarize()

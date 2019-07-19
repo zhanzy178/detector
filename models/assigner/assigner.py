@@ -13,12 +13,12 @@ def assign_bbox(proposals, proposals_ignore, gts, pos_iou_thr, neg_iou_thr):
 
     iou = bbox_overlap(inside_proposals, gts)
     if iou is None:
+        assign_result = proposals.new_zeros((proposals.size(0), ), dtype=torch.long)
         if proposals_ignore is not None:
-            assign_result_origin = assign_result.new_zeros(size=(proposals.size(0), ))
-            assign_result_origin[nignore_ind] = assign_result
+            assign_result[nignore_ind] = -1
         else:
-            assign_result_origin = assign_result
-        return assign_result_origin
+            assign_result -= 1
+        return assign_result
 
     anchor_max_iou, anchor_max_ind = iou.max(dim=1)
 

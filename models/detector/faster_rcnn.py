@@ -60,6 +60,8 @@ class FasterRCNN(nn.Module):
             cls_losses, reg_losses = 0, 0
             for b in range(len(proposals)):
                 assign_result = assign_bbox(proposals[b], None, gt_bboxes[b], self.pos_iou_thr, self.neg_iou_thr)
+                if assign_result is None: continue
+
                 pos_ind, neg_ind = random_sample_pos_neg(assign_result.view(-1), self.sample_num, self.pos_sample_rate)
                 sam_ind = torch.cat([pos_ind, neg_ind]).view(-1)
 
@@ -134,6 +136,9 @@ class FasterRCNN(nn.Module):
                     sort_ind = sort_ind[:self.bbox_nms_max_num]
                 img_det_bboxes = img_det_bboxes[sort_ind].cpu().numpy()
                 img_det_labels = img_det_labels[sort_ind].cpu().numpy()
+
+                # bbox transform
+                img_det_bboxes = img_det_bboxes / float(img_meta['scale_ratio'][b])
 
                 det_bboxes_results.append(img_det_bboxes)
                 det_labels_results.append(img_det_labels)

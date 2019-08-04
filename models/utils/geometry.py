@@ -1,4 +1,5 @@
 import torch
+from .transform import xywh2xyxy
 
 def bbox_overlap(bbox1, bbox2):
     """Computing iou between two bboxes.
@@ -9,13 +10,8 @@ def bbox_overlap(bbox1, bbox2):
         return None
 
     # convert format to ltrb
-    bbox_corner1 = bbox1.clone()
-    bbox_corner2 = bbox2.clone()
-
-    bbox_corner1[:, [0, 1]] -= bbox_corner1[:, [2, 3]]/2
-    bbox_corner1[:, [2, 3]] += bbox_corner1[:, [0, 1]]
-    bbox_corner2[:, [0, 1]] -= bbox_corner2[:, [2, 3]]/2
-    bbox_corner2[:, [2, 3]] += bbox_corner2[:, [0, 1]]
+    bbox_corner1 = xywh2xyxy(bbox1)
+    bbox_corner2 = xywh2xyxy(bbox2)
 
     area1 = bbox1[:, 2]*bbox1[:, 3]
     area2 = bbox2[:, 2]*bbox2[:, 3]

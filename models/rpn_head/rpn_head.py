@@ -2,6 +2,7 @@ import torch.nn as nn
 import torch
 from math import *
 from models.utils.anchor import anchor2bbox
+from models.utils import xywh2xyxy, xyxy2xywh
 from models.assigner import assign_bbox
 from models.sampler import random_sample_pos_neg
 import torch.nn.functional as F
@@ -41,7 +42,7 @@ class RPNHead(nn.Module):
         obj_cls_scores = self.obj_cls(f).transpose(2, 3).transpose(1, 3)
         obj_reg_scores = self.obj_reg(f).transpose(2, 3).transpose(1, 3)
         obj_cls_scores = obj_cls_scores.view(*obj_cls_scores.size()[0:3], -1, 2)
-        obj_reg_scores = obj_reg_scores.view(*obj_reg_scores.size()[0:3], -1, 4) # size B, H, W, 9, 4
+        obj_reg_scores = obj_reg_scores.view(*obj_reg_scores.size()[0:3], -1, 4)  # size B, H, W, 9, 4
 
         # generate anchors
         anchors, anchors_ignore = self.generate_anchors(obj_reg_scores, img_meta)
@@ -58,13 +59,10 @@ class RPNHead(nn.Module):
         # clip bbox outliers in test
         if not self.training:
             for b, im_size in enumerate(img_meta['img_size']):  # (w, h)
-                proposals_corner = proposals[b, ...].clone()
-                proposals_corner[..., [0, 1]] -= proposals[b, ..., [2, 3]]/2
-                proposals_corner[..., [2, 3]] += proposals_corner[..., [0, 1]]
+                proposals_corner = xywh2xyxy(proposals[b, ...])
                 proposals_corner[..., [0, 2]] = proposals_corner[..., [0, 2]].clamp(0, im_size[0])  # w
                 proposals_corner[..., [1, 3]] = proposals_corner[..., [1, 3]].clamp(0, im_size[1])  # h
-                proposals[b, ..., [2, 3]] = (proposals_corner[..., [2, 3]] - proposals_corner[..., [0, 1]])
-                proposals[b, ..., [0, 1]] = proposals_corner[..., [0, 1]] + proposals[..., [2, 3]]/2
+                proposals[b, ...] = xyxy2xywh(proposals_corner)
 
         # compute loss in train
         obj_cls_losses, obj_reg_losses = None, None

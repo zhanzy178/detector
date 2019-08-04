@@ -7,9 +7,9 @@ from torch.optim import SGD
 
 if __name__ == '__main__':
     faster_rcnn = FasterRCNN(num_classes=81).cuda()
-    cocodataset = COCODataset('/home/zzy/Projects/Datasets/coco/annotations/instances_val2017.json', '/home/zzy/Projects/Datasets/coco/images/val2017')
+    cocodataset = COCODataset('/home/zzy/Datasets/coco/annotations/instances_val2017.json', '/home/zzy/Datasets/coco/images/val2017')
     loader = DataLoader(cocodataset, batch_size=1)
-    sgd_opt = SGD(faster_rcnn.parameters(), 0.01)
+    sgd_opt = SGD([p for p in faster_rcnn.parameters() if p.requires_grad], 0.01)
 
     faster_rcnn.train()
     # faster_rcnn.eval()
@@ -22,11 +22,14 @@ if __name__ == '__main__':
 
             print((obj_cls_losses + obj_reg_losses + cls_losses + reg_losses).item())
 
+            # if (iter+1) % 1 == 0:
+            torch.save(faster_rcnn.state_dict(), 'debug_faster.pth')
+            sgd_opt.step()
+            sgd_opt.zero_grad()
+            print('step', ep)
+            torch.cuda.empty_cache()
+
             if (iter+1) % 8 == 0:
-                torch.save(faster_rcnn.state_dict(), 'debug_faster.pth')
-                sgd_opt.step()
-                sgd_opt.zero_grad()
-                print('step', ep)
                 break
 
 

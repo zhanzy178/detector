@@ -13,7 +13,7 @@ class RoIPoolFunction(Function):
         :type ctx:
         :param features:
         :type features:
-        :param rois: rois is in format of (x1, y1, x2, y2)
+        :param rois: rois is in format of (batch_ind, x1, y1, x2, y2)
         :type rois:
         :param out_size:
         :type out_size:

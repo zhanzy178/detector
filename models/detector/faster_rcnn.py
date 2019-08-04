@@ -4,11 +4,13 @@ from models.utils import nms
 import torch.nn as nn
 import torch
 import torch.nn.functional as F
-from models.roi_pool import RoIPool
+# from models.roi_pool import RoIPool
+from torchvision.ops import RoIPool
 from models.bbox_head import BBoxHead
 from models.assigner import assign_bbox
-from models.utils import proposal2bbox
+from models.utils import proposal2bbox, xywh2xyxy
 from models.sampler import random_sample_pos_neg
+
 
 class FasterRCNN(nn.Module):
     """Faster RCNN detector
@@ -17,12 +19,12 @@ class FasterRCNN(nn.Module):
     def __init__(self, num_classes):
         super(FasterRCNN, self).__init__()
         self.strides = [16]
-        self.frozen_layer_num = 2
+        self.frozen_layer_num = 10
 
         self.backbone = vgg16_bn(pretrained=True, frozen_layer_num=self.frozen_layer_num)
         self.rpn_head = RPNHead(self.strides)
 
-        self.roi_pool = RoIPool(out_size=7, spatial_scale=1.0/self.strides[0])
+        self.roi_pool = RoIPool(output_size=(7, 7), spatial_scale=1.0/self.strides[0])
         self.bbox_head = BBoxHead(num_classes=num_classes)
 
         self.rpn_proposal_num = 2000
@@ -30,7 +32,7 @@ class FasterRCNN(nn.Module):
         self.pos_iou_thr = 0.5
         self.neg_iou_thr = 0.5
 
-        self.sample_num = 512
+        self.sample_num = 128  # 512
         self.pos_sample_rate = 0.25
 
         self.rpn_nms_thr_iou = 0.7
@@ -66,11 +68,13 @@ class FasterRCNN(nn.Module):
                 sam_ind = torch.cat([pos_ind, neg_ind]).view(-1)
 
                 rois = proposals[b].clone()
-                rois[:, [0, 1]] -= rois[:, [2, 3]]
-                rois[:, [2, 3]] += rois[:, [0, 1]]
+                rois = xywh2xyxy(rois)
                 batch_ind = rois.new_zeros((rois.size(0), 1))
                 rois = torch.cat([batch_ind, rois], dim=1)
+                # DEBUG:
+                torch.save(dict(rois=rois, sam_ind=sam_ind, feat=feat, b=b), 'roi_pool_state.pth')
                 rois_feat = self.roi_pool(feat[b, None], rois[sam_ind])
+
                 cls_scores, reg_scores = self.bbox_head(rois_feat)
 
                 # compute cls loss
@@ -100,8 +104,7 @@ class FasterRCNN(nn.Module):
             det_labels_results = []
             for b in range(len(proposals)):
                 rois = proposals[b].clone()
-                rois[:, [0, 1]] -= rois[:, [2, 3]]
-                rois[:, [2, 3]] += rois[:, [0, 1]]
+                rois = xywh2xyxy(rois)
                 batch_ind = rois.new_zeros((rois.size(0), 1))
                 rois = torch.cat([batch_ind, rois], dim=1)
 

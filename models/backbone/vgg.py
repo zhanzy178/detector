@@ -38,7 +38,7 @@ class VGG(nn.Module):
 
     def _freeze(self):
         frozen_conv_num = 0
-        for m in self.features.modules():
+        for m in self.features.children():
             if isinstance(m, nn.Conv2d):
                 frozen_conv_num += 1
                 if frozen_conv_num > self.frozen_layer_num: break

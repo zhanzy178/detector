@@ -32,7 +32,7 @@ class FasterRCNN(nn.Module):
         self.pos_iou_thr = 0.5
         self.neg_iou_thr = 0.5
 
-        self.sample_num = 128  # 512
+        self.roi_num_per_img = 128  # 512
         self.pos_sample_rate = 0.25
 
         self.rpn_nms_thr_iou = 0.7
@@ -48,9 +48,10 @@ class FasterRCNN(nn.Module):
 
         # rpn predict proposals
         proposals, obj_cls_scores, \
-        obj_cls_losses, obj_reg_losses = self.rpn_head(feat, img_meta, gt_bboxes)
+        obj_cls_losses, obj_reg_losses, proposals_ignore = self.rpn_head(feat, img_meta, gt_bboxes)
         obj_cls_scores = nn.functional.softmax(obj_cls_scores, dim=2)
-        proposals, obj_scores = nms(proposals, obj_cls_scores[..., 1], nms_iou_thr=self.rpn_nms_thr_iou)
+        torch.cuda.empty_cache()
+        proposals, obj_scores = nms(proposals, obj_cls_scores[..., 1], proposals_ignore, nms_iou_thr=self.rpn_nms_thr_iou)
 
         # extract 2000 proposals
         for b in range(len(proposals)):
@@ -64,15 +65,13 @@ class FasterRCNN(nn.Module):
                 assign_result = assign_bbox(proposals[b], None, gt_bboxes[b], self.pos_iou_thr, self.neg_iou_thr)
                 if assign_result is None: continue
 
-                pos_ind, neg_ind = random_sample_pos_neg(assign_result.view(-1), self.sample_num, self.pos_sample_rate)
+                pos_ind, neg_ind = random_sample_pos_neg(assign_result.view(-1), self.roi_num_per_img, self.pos_sample_rate)
                 sam_ind = torch.cat([pos_ind, neg_ind]).view(-1)
 
                 rois = proposals[b].clone()
                 rois = xywh2xyxy(rois)
                 batch_ind = rois.new_zeros((rois.size(0), 1))
                 rois = torch.cat([batch_ind, rois], dim=1)
-                # DEBUG:
-                torch.save(dict(rois=rois, sam_ind=sam_ind, feat=feat, b=b), 'roi_pool_state.pth')
                 rois_feat = self.roi_pool(feat[b, None], rois[sam_ind])
 
                 cls_scores, reg_scores = self.bbox_head(rois_feat)

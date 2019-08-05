@@ -26,7 +26,9 @@ class RPNHead(nn.Module):
                 h = s*sqrt_r
                 self.anchor_template[i, :] = torch.Tensor([self.anchor_stride[0]/2, self.anchor_stride[0]/2, w, h])
 
-        self.conv = nn.Conv2d(512, 512, kernel_size=3, padding=1, stride=1)
+        self.conv = nn.Sequential(
+            nn.Conv2d(512, 512, kernel_size=3, padding=1, stride=1),
+            nn.ReLU(inplace=False))  # ?
         self.obj_cls = nn.Conv2d(512, 2*self.anchor_template_len, kernel_size=1, stride=1)
         self.obj_reg = nn.Conv2d(512, 4*self.anchor_template_len, kernel_size=1, stride=1)
 
@@ -83,7 +85,8 @@ class RPNHead(nn.Module):
             # DEBUG: torch.save(dict(anchors=anchors, assign_results=assign_results, pos_ind=pos_ind, neg_ind=neg_ind), 'sample_results.pth')
             obj_cls_losses, obj_reg_losses = self.loss(obj_cls_scores.view(-1, 2), obj_reg_scores.view(-1, 4), anchors.view(-1, 4), gt_bboxes.view(-1, 4), assign_results.view(-1), pos_ind, neg_ind)
 
-        return proposals, obj_cls_scores, obj_cls_losses, obj_reg_losses
+
+        return proposals, obj_cls_scores, obj_cls_losses, obj_reg_losses, anchors_ignore
 
 
     def generate_anchors(self, obj_reg_scores, img_meta):

@@ -23,7 +23,7 @@ class COCODataset(Dataset):
         if not self.test_mode:
             self.annotations = self.load_annotations(self.img_ids)
 
-        self.img_size = (800, 600) # (W, H)
+        self.img_size = (1000, 600) # (W, H)
 
     def __len__(self):
         return len(self.img_ids)
@@ -55,8 +55,8 @@ class COCODataset(Dataset):
         img_meta = dict()
 
         # rescale, img.shape = H, W, C
-        rescale_h = float(min(self.img_size))/img.shape[0] # H
-        rescale_w = float(max(self.img_size))/img.shape[1] # W
+        rescale_h = float(min(self.img_size))/min(img.shape) # H
+        rescale_w = float(max(self.img_size))/max(img.shape) # W
         img_meta['scale_ratio'] = scale_ratio = min(rescale_h, rescale_w)
         new_size = (int(scale_ratio*img.shape[1]+0.5), int(scale_ratio*img.shape[0]+0.5))  # new_size=(w, h)
         img = cv2.resize(img, new_size)
@@ -64,8 +64,9 @@ class COCODataset(Dataset):
 
         # normalize
         img = img.astype(np.float32)
-        img_norm_mean = [102.9801, 115.9465, 122.7717]
-        img_norm_std = [1.0, 1.0, 1.0]
+        img_norm_mean = [123.675, 116.28, 103.53]
+        img_norm_std = [58.395, 57.12, 57.375]
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         img = (img - img_norm_mean) / img_norm_std
         img = img.transpose((2, 0, 1))
 

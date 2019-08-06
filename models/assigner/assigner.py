@@ -1,6 +1,7 @@
 from models.utils import bbox_overlap
 import torch
 
+# @profile
 def assign_bbox(proposals, proposals_ignore, gts, pos_iou_thr, neg_iou_thr):
     """assign proposal positive, negative and ignore according to gt.
     """
@@ -23,13 +24,8 @@ def assign_bbox(proposals, proposals_ignore, gts, pos_iou_thr, neg_iou_thr):
     anchor_max_iou, anchor_max_ind = iou.max(dim=1)
 
     assign_result = anchor_max_ind.clone() + 1
-    for i in range(len(anchor_max_ind)):
-        if assign_result[i] != 0:
-            if iou[i][anchor_max_ind[i]] < neg_iou_thr:
-                assign_result[i] = -1
-            elif iou[i][anchor_max_ind[i]] < pos_iou_thr:
-                assign_result[i] = 0
-
+    assign_result[(anchor_max_iou < pos_iou_thr).nonzero().view(-1)] = 0
+    assign_result[(anchor_max_iou < neg_iou_thr).nonzero().view(-1)] = -1
 
     # assign gt nearest bbox, also is the best match bbox
     gt_max_iou, gt_max_ind = iou.max(dim=0)

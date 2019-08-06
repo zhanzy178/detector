@@ -1,6 +1,6 @@
 from models.backbone import vgg16_bn
 from models.rpn_head import RPNHead
-from models.utils import nms
+from models.utils import nms_wrapper
 import torch.nn as nn
 import torch
 import torch.nn.functional as F
@@ -42,7 +42,7 @@ class FasterRCNN(nn.Module):
         self.bbox_nms_max_num = 300
 
 
-
+    # @profile
     def forward(self, img, img_meta, gt_bboxes=None, gt_labels=None):
         feat = self.backbone(img)
 
@@ -50,8 +50,8 @@ class FasterRCNN(nn.Module):
         proposals, obj_cls_scores, \
         obj_cls_losses, obj_reg_losses, proposals_ignore = self.rpn_head(feat, img_meta, gt_bboxes)
         obj_cls_scores = nn.functional.softmax(obj_cls_scores, dim=2)
-        torch.cuda.empty_cache()
-        proposals, obj_scores = nms(proposals, obj_cls_scores[..., 1], proposals_ignore, nms_iou_thr=self.rpn_nms_thr_iou)
+
+        proposals, obj_scores = nms_wrapper(proposals, obj_cls_scores[..., 1], proposals_ignore, nms_iou_thr=self.rpn_nms_thr_iou)
 
         # extract 2000 proposals
         for b in range(len(proposals)):
@@ -125,7 +125,7 @@ class FasterRCNN(nn.Module):
 
                     scores = softmax_cls_scores[ind, cls]
                     bboxes = cls_bboxes[ind, cls*4:(cls+1)*4]
-                    det_bboxes, det_scores = nms(bboxes[None, ...], scores[None, ...], self.bbox_nms_thr_iou)
+                    det_bboxes, det_scores = nms_wrapper(bboxes[None, ...], scores[None, ...], self.bbox_nms_thr_iou)
                     det_bboxes, det_scores = det_bboxes[0], det_scores[0]
                     img_det_bboxes.append(torch.cat((det_bboxes, det_scores.view(-1, 1)), dim=1))
                     img_det_labels.append(torch.zeros(size=(det_bboxes.size(0), ), dtype=torch.long) + cls)

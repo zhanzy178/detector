@@ -11,7 +11,7 @@ if __name__ == '__main__':
     faster_rcnn = FasterRCNN(num_classes=81).cuda()
     cocodataset = COCODataset('/home/zzy/Datasets/coco/annotations/instances_val2017.json', '/home/zzy/Datasets/coco/images/val2017')
     loader = DataLoader(cocodataset, batch_size=1)
-    sgd_opt = SGD([p for p in faster_rcnn.parameters() if p.requires_grad], 0.01)
+    sgd_opt = SGD([p for p in faster_rcnn.parameters() if p.requires_grad], 0.001)
 
     faster_rcnn.train()
     # faster_rcnn.eval()
@@ -35,8 +35,8 @@ if __name__ == '__main__':
             print('step', ep)
             print('time', end-start)
 
-            if (iter+1) % 8 == 0:
-                break
+            # if (iter+1) % 8 == 0:
+            #     break
 
 
 

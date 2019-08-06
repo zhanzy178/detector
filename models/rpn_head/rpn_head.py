@@ -16,6 +16,7 @@ class RPNHead(nn.Module):
         self.anchor_scale = [128.0, 256.0, 512.0]
         self.anchor_stride = strides
         self.anchor_template_len = len(self.anchor_ratio) * len(self.anchor_scale)
+
         self.anchor_template = torch.zeros(size=(self.anchor_template_len, 4), dtype=torch.float64)
         for ri, r in enumerate(self.anchor_ratio):
             for si, s in enumerate(self.anchor_scale):
@@ -26,9 +27,7 @@ class RPNHead(nn.Module):
                 h = s*sqrt_r
                 self.anchor_template[i, :] = torch.Tensor([self.anchor_stride[0]/2, self.anchor_stride[0]/2, w, h])
 
-        self.conv = nn.Sequential(
-            nn.Conv2d(512, 512, kernel_size=3, padding=1, stride=1),
-            nn.ReLU(inplace=False))  # ?
+        self.conv = nn.Conv2d(512, 512, kernel_size=3, padding=1, stride=1)
         self.obj_cls = nn.Conv2d(512, 2*self.anchor_template_len, kernel_size=1, stride=1)
         self.obj_reg = nn.Conv2d(512, 4*self.anchor_template_len, kernel_size=1, stride=1)
 
@@ -38,11 +37,12 @@ class RPNHead(nn.Module):
         self.sample_num = 256
         self.pos_sample_rate = 0.5
 
+    # @profile
     def forward(self, feature_maps, img_meta, gt_bboxes=None):
         # network forward
         f = F.relu(self.conv(feature_maps), inplace=True)
-        obj_cls_scores = self.obj_cls(f).transpose(2, 3).transpose(1, 3)
-        obj_reg_scores = self.obj_reg(f).transpose(2, 3).transpose(1, 3)
+        obj_cls_scores = self.obj_cls(f).permute(0, 2, 3, 1).contiguous()
+        obj_reg_scores = self.obj_reg(f).permute(0, 2, 3, 1).contiguous()
         obj_cls_scores = obj_cls_scores.view(*obj_cls_scores.size()[0:3], -1, 2)
         obj_reg_scores = obj_reg_scores.view(*obj_reg_scores.size()[0:3], -1, 4)  # size B, H, W, 9, 4
 
@@ -52,10 +52,10 @@ class RPNHead(nn.Module):
 
         # generate regresion results, bbox proposals
         batch_size = obj_reg_scores.size(0)
-        anchors = anchors.contiguous().view(batch_size, -1, 4)
-        anchors_ignore = anchors_ignore.contiguous().view(batch_size, -1)
-        obj_cls_scores = obj_cls_scores.contiguous().view(batch_size, -1, 2)
-        obj_reg_scores = obj_reg_scores.contiguous().view(batch_size, -1, 4)
+        anchors = anchors.view(batch_size, -1, 4)
+        anchors_ignore = anchors_ignore.view(batch_size, -1)
+        obj_cls_scores = obj_cls_scores.view(batch_size, -1, 2)
+        obj_reg_scores = obj_reg_scores.view(batch_size, -1, 4)
         proposals = anchor2bbox(anchors, obj_reg_scores)
 
         # clip bbox outliers in test
@@ -88,7 +88,6 @@ class RPNHead(nn.Module):
 
         return proposals, obj_cls_scores, obj_cls_losses, obj_reg_losses, anchors_ignore
 
-
     def generate_anchors(self, obj_reg_scores, img_meta):
         """generate anchor xywh from predict scores
 
@@ -105,9 +104,10 @@ class RPNHead(nn.Module):
         anchors = obj_reg_scores.new_zeros(size=(B, H, W, self.anchor_template_len, 4))
         anchors[:, :, :] = self.anchor_template
         anchors_ignore = obj_reg_scores.new_zeros(size=(B, H, W, self.anchor_template_len), dtype=torch.long)
-        for hi in range(H):
-            for wi in range(W):
-                anchors[:, hi, wi, :, :] += obj_reg_scores.new_tensor([wi*self.anchor_stride[0], hi*self.anchor_stride[0], 0, 0])  # x+w_delta, y+h_delta, w, h
+
+        anchor_center = torch.meshgrid(torch.arange(H), torch.arange(W))
+        anchor_center = torch.stack((anchor_center[1], anchor_center[0]), dim=-1).type_as(anchors)*self.anchor_stride[0]
+        anchors[..., [0, 1]] += anchor_center[None, ..., None, :]
 
         if self.training: # ignore outliers
             for b, im_size in enumerate(img_meta['img_size'].cuda()):

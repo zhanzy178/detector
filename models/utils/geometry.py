@@ -1,6 +1,7 @@
 import torch
 from .transform import xywh2xyxy
 
+# @profile
 def bbox_overlap(bbox1, bbox2):
     """Computing iou between two bboxes.
         The input bbox in format xywh.

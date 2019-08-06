@@ -55,8 +55,8 @@ class COCODataset(Dataset):
         img_meta = dict()
 
         # rescale, img.shape = H, W, C
-        rescale_h = float(min(self.img_size))/min(img.shape) # H
-        rescale_w = float(max(self.img_size))/max(img.shape) # W
+        rescale_h = float(min(self.img_size))/min(img.shape[0], img.shape[1]) # H
+        rescale_w = float(max(self.img_size))/max(img.shape[0], img.shape[1]) # W
         img_meta['scale_ratio'] = scale_ratio = min(rescale_h, rescale_w)
         new_size = (int(scale_ratio*img.shape[1]+0.5), int(scale_ratio*img.shape[0]+0.5))  # new_size=(w, h)
         img = cv2.resize(img, new_size)

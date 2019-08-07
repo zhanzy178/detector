@@ -15,7 +15,6 @@ if __name__ == '__main__':
 
 
     faster_rcnn = FasterRCNN(num_classes=81).cuda()
-    faster_rcnn.load_state_dict(torch.load('debug_rpn.pth'))
     sgd_opt = SGD(faster_rcnn.parameters(), 0.01)
 
     # faster_rcnn.eval()
@@ -35,6 +34,7 @@ if __name__ == '__main__':
                 print('\nobj_cls: %.3f, obj_reg: %.3f, cls: %.3f, reg: %.3f'
                       %(obj_cls_losses.item(), obj_reg_losses.item(), cls_losses.item(), reg_losses.item()))
             train_bar.update()
+
         torch.save(faster_rcnn.state_dict(), 'debug_faster.pth')
 
         # val

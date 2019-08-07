@@ -27,7 +27,6 @@ if __name__ == '__main__':
             torch.save(faster_rcnn.state_dict(), 'debug_faster.pth')
             sgd_opt.step()
             sgd_opt.zero_grad()
-            torch.cuda.empty_cache()
 
             end = time()
             print(b['img'].size())

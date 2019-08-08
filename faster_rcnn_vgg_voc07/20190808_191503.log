@@ -1,5 +1,0 @@
-2019-08-08 19:15:03,552 - INFO - Start running, host: zzy@lm3, work_dir: /home/zzy/Projects/detector/faster_rcnn_vgg_voc07
-2019-08-08 19:15:03,552 - INFO - workflow: [('train', 1), ('val', 1)], max: 120 epochs
-2019-08-08 19:15:29,356 - INFO - Epoch [1][100/5011]	lr: 0.00100, eta: 1 day, 18:31:49, time: 0.255, data_time: 0.064, memory: 1485, rpn_cls_loss: 0.6810, rpn_reg_loss: nan, cls_loss: 2.2724, reg_loss: 0.0313, loss: nan
-2019-08-08 19:15:50,418 - INFO - Epoch [1][200/5011]	lr: 0.00100, eta: 1 day, 14:50:34, time: 0.211, data_time: 0.065, memory: 1487, rpn_cls_loss: 0.6511, rpn_reg_loss: nan, cls_loss: 1.7437, reg_loss: 0.0357, loss: nan
-2019-08-08 19:16:10,416 - INFO - Epoch [1][300/5011]	lr: 0.00100, eta: 1 day, 13:01:06, time: 0.200, data_time: 0.060, memory: 1487, rpn_cls_loss: 0.6203, rpn_reg_loss: nan, cls_loss: 1.5749, reg_loss: 0.0341, loss: nan

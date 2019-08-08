@@ -1,3 +1,6 @@
+import sys
+sys.path.append('.')
+
 from models.detector import FasterRCNN
 from datasets import COCODataset
 import torch

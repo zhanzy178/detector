@@ -1,3 +1,6 @@
+import sys
+sys.path.append('.')
+
 from models.assigner import assign_bbox
 import torch
 

@@ -1,0 +1,2 @@
+2019-08-08 19:32:37,603 - INFO - Start running, host: zzy@lm3, work_dir: /home/zzy/Projects/detector/faster_rcnn_vgg_voc07
+2019-08-08 19:32:37,603 - INFO - workflow: [('train', 1), ('val', 1)], max: 120 epochs

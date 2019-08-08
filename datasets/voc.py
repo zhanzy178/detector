@@ -8,7 +8,7 @@ import json
 
 
 class VOCDataset(Dataset):
-    def __init__(self, ann_file, img_root, test_mode=False):
+    def __init__(self, ann_file, img_root, valid_mode=False):
         super(VOCDataset, self).__init__()
         self.class_name = ['aeroplane', 'boat', 'car', 'cow',
                            'horse', 'pottedplant', 'train',
@@ -19,9 +19,8 @@ class VOCDataset(Dataset):
                            'person', 'sofa', 'tvmonitor']
 
         self.img_root = img_root
-        self.test_mode = test_mode
-        if not self.test_mode:
-            self.annotations = self.load_annotations(ann_file)
+        self.valid_mode = valid_mode
+        self.annotations = self.load_annotations(ann_file)
 
         self.img_size = (1000, 600)  # (W, H)
 
@@ -39,10 +38,9 @@ class VOCDataset(Dataset):
         img, img_meta = self.img_transform(img)
 
         data = dict(img=img)
-        if not self.test_mode:
-            bboxes, labels = anno['bboxes'], anno['labels']
-            bboxes, labels = self.anno_transform(bboxes, labels, img_meta)
-            data.update(dict(gt_bboxes=bboxes, gt_labels=labels))
+        bboxes, labels = anno['bboxes'], anno['labels']
+        bboxes, labels = self.anno_transform(bboxes, labels, img_meta)
+        data.update(dict(gt_bboxes=bboxes, gt_labels=labels))
 
         img_meta['img_id'] = anno['img_id']
         data.update(dict(img_meta=img_meta))

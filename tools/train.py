@@ -5,12 +5,12 @@ import sys
 sys.path.append('.')
 from models import build_detector
 from datasets import build_dataset
-from mmcv.utils import Config
-from mmcv.runner import Runner
+from cvtools.utils import Config
+from cvtools.runner import Runner
 
 
 def batch_processor(model, data, train_mode):
-    """mmcv.Runner process data api"""
+    """cvtools.Runner process data api"""
     img, img_meta, gt_bboxes, gt_labels = \
         data['img'].cuda(), data['img_meta'], data['gt_bboxes'].cuda(), data['gt_labels'].cuda()
 

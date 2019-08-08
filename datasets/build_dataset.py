@@ -1,5 +1,5 @@
 import datasets
-from mmcv.runner import obj_from_dict
+from cvtools.runner import obj_from_dict
 
 
 def build_dataset(cfg):

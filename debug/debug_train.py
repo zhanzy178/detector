@@ -7,7 +7,7 @@ import torch
 from torch.utils.data import DataLoader
 from torch.optim import SGD
 import json
-import mmcv
+import cvtools
 
 
 if __name__ == '__main__':
@@ -24,7 +24,7 @@ if __name__ == '__main__':
     for ep in range(1000):
 
         # train
-        train_bar = mmcv.ProgressBar(len(train_loader))
+        train_bar = cvtools.ProgressBar(len(train_loader))
         faster_rcnn.train()
         for iter, b in enumerate(train_loader):
             obj_cls_losses, obj_reg_losses, cls_losses, reg_losses \
@@ -41,7 +41,7 @@ if __name__ == '__main__':
         torch.save(faster_rcnn.state_dict(), 'debug_faster.pth')
 
         # val
-        val_bar = mmcv.ProgressBar(len(val_loader))
+        val_bar = cvtools.ProgressBar(len(val_loader))
         faster_rcnn.eval()
         det_bboxes_results = []
         det_labels_results = []

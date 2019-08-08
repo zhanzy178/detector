@@ -58,7 +58,10 @@ class VOCDataset(Dataset):
                 # convert to format of xywh
                 bboxes[:, [2, 3]] = bboxes[:, [2, 3]] - bboxes[:, [0, 1]]
                 bboxes[:, [0, 1]] += bboxes[:, [2, 3]] / 2
-            
+
+            for b in ann['bboxes']:
+                assert self.class_name.index(b['name']) != -1
+
             annotations_list.append(dict(
                 img_id=int(ann['filename'].split('.')[0]),
                 filename=ann['filename'],

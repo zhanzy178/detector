@@ -19,7 +19,7 @@ class FasterRCNN(nn.Module):
     def __init__(self, num_classes):
         super(FasterRCNN, self).__init__()
         self.strides = [16]
-        self.frozen_layer_num = 10
+        self.frozen_layer_num = 4
 
         self.backbone = vgg16_bn(pretrained=True, frozen_layer_num=self.frozen_layer_num)
         self.rpn_head = RPNHead(self.strides)
@@ -125,7 +125,7 @@ class FasterRCNN(nn.Module):
 
                     scores = softmax_cls_scores[ind, cls]
                     bboxes = cls_bboxes[ind, cls*4:(cls+1)*4]
-                    det_bboxes, det_scores = nms_wrapper(bboxes[None, ...], scores[None, ...], self.bbox_nms_thr_iou)
+                    det_bboxes, det_scores = nms_wrapper(bboxes[None, ...], scores[None, ...], None, self.bbox_nms_thr_iou)
                     det_bboxes, det_scores = det_bboxes[0], det_scores[0]
                     img_det_bboxes.append(torch.cat((det_bboxes, det_scores.view(-1, 1)), dim=1))
                     img_det_labels.append(torch.zeros(size=(det_bboxes.size(0), ), dtype=torch.long) + cls)

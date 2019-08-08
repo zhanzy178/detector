@@ -4,5 +4,6 @@ work_dirs
 
 models/roi_pool/build
 
+*.log
 *.pth
 *.pt

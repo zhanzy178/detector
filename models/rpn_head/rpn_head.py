@@ -131,6 +131,8 @@ class RPNHead(nn.Module):
 
         # proposal bounding box regression loss
         pos_ind = pos_ind.view(-1)
+        if pos_ind.size(0) == 0:
+            return cls_losses, 0
         pos_anchor = anchor[pos_ind]
         pos_gt = gt_bbox[assign_results[pos_ind]-1]
         pos_reg_score = obj_reg_score[pos_ind]
@@ -138,8 +140,8 @@ class RPNHead(nn.Module):
         gt_score[:, [0, 1]] = (gt_score[:, [0, 1]] - pos_anchor[:, [0, 1]]) / pos_anchor[:, [2, 3]]
         gt_score[:, [2, 3]] = (gt_score[:, [2, 3]] / pos_anchor[:, [2, 3]]).log()
 
-        reg_losser = nn.SmoothL1Loss()
-        reg_losses = reg_losser(pos_reg_score, gt_score)
+        reg_losser = nn.SmoothL1Loss(reduction='sum')
+        reg_losses = reg_losser(pos_reg_score, gt_score) / sam_ind.size(0)
         # when gt_score.size(0) = 0, reg_losses will be nan
 
 

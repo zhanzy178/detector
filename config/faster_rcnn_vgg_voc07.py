@@ -43,6 +43,7 @@ checkpoint_hook_cfg=dict(interval=1)
 log_hooks_cfg=dict(
     interval=100,
     hooks=[
+        dict(type='VOCEvalLoggerHook'),
         dict(type='TextLoggerHook'),
         dict(type='TensorboardLoggerHook')
     ],

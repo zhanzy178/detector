@@ -2,9 +2,9 @@ import torch.nn as nn
 import torch
 from math import *
 from models.utils.anchor import anchor2bbox
-from models.utils import xywh2xyxy, xyxy2xywh
 from models.assigner import assign_bbox
 from models.sampler import random_sample_pos_neg
+from cvtools.bbox import xywh2xyxy, xyxy2xywh
 import torch.nn.functional as F
 
 class RPNHead(nn.Module):

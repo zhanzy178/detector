@@ -1,6 +1,6 @@
 from models.backbone import vgg16_bn
 from models.rpn_head import RPNHead
-from models.utils import nms_wrapper
+from cvtools.bbox import nms_wrapper
 import torch.nn as nn
 import torch
 import torch.nn.functional as F
@@ -8,8 +8,9 @@ import torch.nn.functional as F
 from torchvision.ops import RoIPool
 from models.bbox_head import BBoxHead
 from models.assigner import assign_bbox
-from models.utils import proposal2bbox, xywh2xyxy
+from models.utils import proposal2bbox
 from models.sampler import random_sample_pos_neg
+from cvtools.bbox import xywh2xyxy
 
 
 class FasterRCNN(nn.Module):
@@ -42,7 +43,6 @@ class FasterRCNN(nn.Module):
         self.bbox_nms_max_num = 300
 
 
-    # @profile
     def forward(self, img, img_meta, gt_bboxes=None, gt_labels=None):
         feat = self.backbone(img)
 
@@ -118,9 +118,10 @@ class FasterRCNN(nn.Module):
                 # multiclass nms
                 img_det_bboxes = []
                 img_det_labels = []
+                val_ind = softmax_cls_scores > self.bbox_nms_score_thr
                 for cls in range(1, cls_bboxes.size(1) // 4):
-                    ind = softmax_cls_scores[:, cls] > self.bbox_nms_score_thr
-                    if sum(ind) == 0:
+                    ind = val_ind[:, cls]
+                    if not any(ind):
                         continue
 
                     scores = softmax_cls_scores[ind, cls]
@@ -129,6 +130,11 @@ class FasterRCNN(nn.Module):
                     det_bboxes, det_scores = det_bboxes[0], det_scores[0]
                     img_det_bboxes.append(torch.cat((det_bboxes, det_scores.view(-1, 1)), dim=1))
                     img_det_labels.append(torch.zeros(size=(det_bboxes.size(0), ), dtype=torch.long) + cls)
+
+                if len(img_det_bboxes) == 0:
+                    det_bboxes_results.append(torch.Tensor(img_det_bboxes))
+                    det_labels_results.append(torch.Tensor(img_det_labels))
+                    continue
 
                 img_det_bboxes = torch.cat(img_det_bboxes)
                 img_det_labels = torch.cat(img_det_labels)

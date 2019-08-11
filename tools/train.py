@@ -43,7 +43,8 @@ def batch_processor(model, data, train_mode):
                     num_samples=img.size(0))
     else:
         det_bboxes, det_labels = model(img, img_meta, gt_bboxes, gt_labels)
-        return dict(det_bboxes=det_bboxes, det_labels=det_labels, gt_bboxes=gt_bboxes, gt_labels=gt_labels)
+        return dict(det_bboxes=det_bboxes, det_labels=det_labels,
+                    gt_bboxes=gt_bboxes.cpu().numpy(), gt_labels=gt_labels.cpu().numpy())
 
 
 def train_detector(cfg):

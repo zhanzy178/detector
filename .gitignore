@@ -7,3 +7,5 @@ models/roi_pool/build
 *.log
 *.pth
 *.pt
+*.prof
+*.lprof

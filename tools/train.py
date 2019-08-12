@@ -27,16 +27,17 @@ def batch_processor(model, data, train_mode):
             loss += rpn_cls_loss
         if rpn_reg_loss is not None:
             log_vars.update(dict(rpn_reg_loss=float(rpn_reg_loss)))
-            loss += rpn_cls_loss
+            loss += rpn_reg_loss
         if cls_loss is not None:
             log_vars.update(dict(cls_loss=float(cls_loss)))
-            loss += rpn_cls_loss
+            loss += cls_loss
         if reg_loss is not None:
             log_vars.update(dict(reg_loss=float(reg_loss)))
-            loss += rpn_cls_loss
+            loss += reg_loss
 
         if loss is not None:
             log_vars.update(dict(loss=float(loss)))
+
 
         return dict(loss=loss,
                     log_vars=log_vars,
@@ -53,7 +54,8 @@ def train_detector(cfg):
     detector.cuda()
 
     # data
-    train_dataset = build_dataset(cfg.dataset.train)
+    # train_dataset = build_dataset(cfg.dataset.train)
+    train_dataset = build_dataset(cfg.dataset.val)
     val_dataset = build_dataset(cfg.dataset.val)
     train_dataloader = DataLoader(train_dataset, batch_size=cfg.img_batch_size)
     val_dataloader = DataLoader(val_dataset, batch_size=cfg.img_batch_size)

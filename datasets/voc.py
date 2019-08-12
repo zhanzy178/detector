@@ -20,7 +20,7 @@ class VOCDataset(Dataset):
 
         self.img_root = img_root
         self.valid_mode = valid_mode
-        self.annotations = self.load_annotations(ann_file)
+        self.annotations = self.load_annotations(ann_file)[:200]
 
         self.img_size = (1000, 600)  # (W, H)
 

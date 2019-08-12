@@ -20,7 +20,7 @@ class FasterRCNN(nn.Module):
     def __init__(self, num_classes):
         super(FasterRCNN, self).__init__()
         self.strides = [16]
-        self.frozen_layer_num = 4
+        self.frozen_layer_num = 0
 
         self.backbone = vgg16_bn(pretrained=True, frozen_layer_num=self.frozen_layer_num)
         self.rpn_head = RPNHead(self.strides)

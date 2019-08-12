@@ -43,6 +43,7 @@ class FasterRCNN(nn.Module):
         self.bbox_nms_max_num = 300
 
 
+    @profile
     def forward(self, img, img_meta, gt_bboxes=None, gt_labels=None):
         feat = self.backbone(img)
 
@@ -82,7 +83,7 @@ class FasterRCNN(nn.Module):
                 cls_losser = nn.CrossEntropyLoss()
                 cls_losses += cls_losser(cls_scores, cls_target)
 
-                # copmute reg loss
+                # compute reg loss
                 if pos_ind.size(0) > 0:
                     pos_gt = gt_bboxes[b, assign_result[pos_ind].view(-1)-1]
                     pos_proposal = proposals[b][pos_ind.view(-1)]
@@ -119,11 +120,12 @@ class FasterRCNN(nn.Module):
                 img_det_bboxes = []
                 img_det_labels = []
                 val_ind = softmax_cls_scores > self.bbox_nms_score_thr
+                valid_flag = val_ind.any(0)
                 for cls in range(1, cls_bboxes.size(1) // 4):
-                    ind = val_ind[:, cls]
-                    if not any(ind):
+                    if not valid_flag[cls]:
                         continue
 
+                    ind = val_ind[:, cls]
                     scores = softmax_cls_scores[ind, cls]
                     bboxes = cls_bboxes[ind, cls*4:(cls+1)*4]
                     det_bboxes, det_scores = nms_wrapper(bboxes[None, ...], scores[None, ...], None, self.bbox_nms_thr_iou)

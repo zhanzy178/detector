@@ -1,7 +1,8 @@
 # ----------------- train setting -----------------
-work_dir = 'work_dirs/faster_rcnn_vgg_voc07'
+work_dir = 'work_dirs/faster_rcnn_vgg_voc07_ori'
 epoch=120
 img_batch_size=1
+load_from = None
 
 # ----------------- model -----------------
 detector = dict(

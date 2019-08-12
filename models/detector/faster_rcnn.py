@@ -43,7 +43,6 @@ class FasterRCNN(nn.Module):
         self.bbox_nms_max_num = 300
 
 
-    @profile
     def forward(self, img, img_meta, gt_bboxes=None, gt_labels=None):
         feat = self.backbone(img)
 

@@ -20,7 +20,7 @@ class VOCDataset(Dataset):
 
         self.img_root = img_root
         self.valid_mode = valid_mode
-        self.annotations = self.load_annotations(ann_file)[:200]
+        self.annotations = self.load_annotations(ann_file)
 
         self.img_size = (1000, 600)  # (W, H)
 
@@ -38,9 +38,12 @@ class VOCDataset(Dataset):
         img, img_meta = self.img_transform(img)
 
         data = dict(img=img)
-        bboxes, labels = anno['bboxes'], anno['labels']
-        bboxes, labels = self.anno_transform(bboxes, labels, img_meta)
-        data.update(dict(gt_bboxes=bboxes, gt_labels=labels))
+        bboxes_ori, labels_ori = anno['bboxes'], anno['labels']
+        if self.valid_mode:
+            data.update(dict(gt_bboxes=bboxes_ori, gt_labels=labels_ori))
+        else:
+            bboxes, labels = self.anno_transform(bboxes_ori, labels_ori, img_meta)
+            data.update(dict(gt_bboxes=bboxes, gt_labels=labels))
 
         img_meta['img_id'] = anno['img_id']
         data.update(dict(img_meta=img_meta))

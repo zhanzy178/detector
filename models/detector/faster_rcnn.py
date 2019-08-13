@@ -53,8 +53,8 @@ class FasterRCNN(nn.Module):
 
         # filter out small bbox size
         for pi, proposal in enumerate(proposals):
-            small_bbox_ind = (proposal[..., [2]] < 1 | proposal[..., [3]] < 1)
-            proposals_ignore[pi][small_bbox_ind] = 1
+            small_bbox_ind = ((proposal[..., [2]] < 1) | (proposal[..., [3]] < 1))
+            proposals_ignore[pi][small_bbox_ind.view(-1)] = 1
         proposals, obj_scores = nms_wrapper(proposals, obj_cls_scores[..., 1], proposals_ignore, nms_iou_thr=self.rpn_nms_thr_iou)
 
         # extract 2000 proposals

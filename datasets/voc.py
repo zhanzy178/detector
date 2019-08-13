@@ -45,6 +45,8 @@ class VOCDataset(Dataset):
             bboxes, labels = self.anno_transform(bboxes_ori, labels_ori, img_meta)
             data.update(dict(gt_bboxes=bboxes, gt_labels=labels))
 
+        data.update(dict(difficults=anno['difficults']))
+
         img_meta['img_id'] = anno['img_id']
         data.update(dict(img_meta=img_meta))
 
@@ -57,6 +59,7 @@ class VOCDataset(Dataset):
         annotations_list = []
         for ann in annotations:
             bboxes = np.array([b['bbox'] for b in ann['bboxes']], dtype=np.float32)
+            difficults = np.array([b['difficult'] for b in ann['bboxes']], dtype=np.int32)
             if bboxes.shape[0] != 0:
                 # convert to format of xywh
                 bboxes[:, [2, 3]] = bboxes[:, [2, 3]] - bboxes[:, [0, 1]]
@@ -71,6 +74,7 @@ class VOCDataset(Dataset):
                 width=ann['width'],
                 height=ann['height'],
                 bboxes=bboxes,
+                difficults=difficults,
                 labels=np.array([self.class_name.index(b['name'])+1 for b in ann['bboxes']], dtype=np.int64)
                 # backgroud as 0 label
             ))

@@ -46,7 +46,8 @@ def batch_processor(model, data, train_mode):
     else:
         det_bboxes, det_labels = model(img, img_meta)
         return dict(det_bboxes=det_bboxes, det_labels=det_labels,
-                    gt_bboxes=data['gt_bboxes'].numpy(), gt_labels=data['gt_labels'].numpy())
+                    gt_bboxes=data['gt_bboxes'].numpy(), gt_labels=data['gt_labels'].numpy(),
+                    difficults=data['difficults'].numpy())
 
 
 def train_detector(cfg):
@@ -56,8 +57,7 @@ def train_detector(cfg):
 
 
     # data
-    # train_dataset = build_dataset(cfg.dataset.train)
-    train_dataset = build_dataset(cfg.dataset.val)
+    train_dataset = build_dataset(cfg.dataset.train)
     val_dataset = build_dataset(cfg.dataset.val)
     train_dataloader = DataLoader(train_dataset, batch_size=cfg.img_batch_size)
     val_dataloader = DataLoader(val_dataset, batch_size=cfg.img_batch_size)

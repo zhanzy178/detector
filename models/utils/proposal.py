@@ -1,6 +1,7 @@
 import numpy as np
+from cvtools.bbox import xyxy2xywh, xywh2xyxy
 
-def proposal2bbox(proposals, reg_scores):
+def proposal2bbox(proposals, reg_scores, img_size=None):
     """
     use for fast rcnn to compute bbox from scores and proposals
     :param rois:
@@ -21,5 +22,11 @@ def proposal2bbox(proposals, reg_scores):
     proposals_bbox[:, 1::4] = proposals_bbox[:, 1::4]*proposals[:, 3, None] + proposals[:, 1, None]
     proposals_bbox[:, 2::4] = proposals_bbox[:, 2::4].exp() * proposals[:, 2, None]
     proposals_bbox[:, 3::4] = proposals_bbox[:, 3::4].exp() * proposals[:, 3, None]
+
+    if img_size is not None:
+        proposals_corner = xywh2xyxy(proposals_bbox)
+        proposals_corner[..., [0, 2]] = proposals_corner[..., [0, 2]].clamp(0, img_size[0])  # w
+        proposals_corner[..., [1, 3]] = proposals_corner[..., [1, 3]].clamp(0, img_size[1])  # h
+        proposals_bbox = xyxy2xywh(proposals_corner)
 
     return proposals_bbox

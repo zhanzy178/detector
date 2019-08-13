@@ -1,5 +1,5 @@
 # ----------------- train setting -----------------
-work_dir = 'work_dirs/faster_rcnn_vgg_voc07_val'
+work_dir = 'work_dirs/faster_rcnn_vgg_voc07'
 epoch=120
 img_batch_size=1
 load_from = None
@@ -37,7 +37,7 @@ optimizer = dict(
 lr_hook_cfg=dict(
     policy='step',
     by_epoch=False,
-    step=[60000]
+    step=[600000]
 )
 optimizer_hook_cfg=dict()
 checkpoint_hook_cfg=dict(interval=1)

@@ -51,6 +51,10 @@ class FasterRCNN(nn.Module):
         obj_cls_losses, obj_reg_losses, proposals_ignore = self.rpn_head(feat, img_meta, gt_bboxes)
         obj_cls_scores = nn.functional.softmax(obj_cls_scores, dim=2)
 
+        # filter out small bbox size
+        for pi, proposal in enumerate(proposals):
+            small_bbox_ind = (proposal[..., [2]] < 1 | proposal[..., [3]] < 1)
+            proposals_ignore[pi][small_bbox_ind] = 1
         proposals, obj_scores = nms_wrapper(proposals, obj_cls_scores[..., 1], proposals_ignore, nms_iou_thr=self.rpn_nms_thr_iou)
 
         # extract 2000 proposals
@@ -112,7 +116,7 @@ class FasterRCNN(nn.Module):
                 cls_scores, reg_scores = self.bbox_head(rois_feat)
 
                 # compute bbox xywh
-                cls_bboxes = proposal2bbox(proposals[b], reg_scores)
+                cls_bboxes = proposal2bbox(proposals[b], reg_scores, img_meta['img_size'][b])
                 softmax_cls_scores = F.softmax(cls_scores, dim=1)
 
                 # multiclass nms

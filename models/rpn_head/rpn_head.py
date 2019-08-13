@@ -56,15 +56,7 @@ class RPNHead(nn.Module):
         anchors_ignore = anchors_ignore.view(batch_size, -1)
         obj_cls_scores = obj_cls_scores.view(batch_size, -1, 2)
         obj_reg_scores = obj_reg_scores.view(batch_size, -1, 4)
-        proposals = anchor2bbox(anchors, obj_reg_scores)
-
-        # clip bbox outliers in test
-        if not self.training:
-            for b, im_size in enumerate(img_meta['img_size']):  # (w, h)
-                proposals_corner = xywh2xyxy(proposals[b, ...])
-                proposals_corner[..., [0, 2]] = proposals_corner[..., [0, 2]].clamp(0, im_size[0])  # w
-                proposals_corner[..., [1, 3]] = proposals_corner[..., [1, 3]].clamp(0, im_size[1])  # h
-                proposals[b, ...] = xyxy2xywh(proposals_corner)
+        proposals = anchor2bbox(anchors, obj_reg_scores, img_meta['img_size'])
 
         # compute loss in train
         obj_cls_losses, obj_reg_losses = None, None

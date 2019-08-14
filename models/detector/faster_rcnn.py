@@ -28,7 +28,10 @@ class FasterRCNN(nn.Module):
         self.roi_pool = RoIPool(output_size=(7, 7), spatial_scale=1.0/self.strides[0])
         self.bbox_head = BBoxHead(num_classes=num_classes)
 
-        self.rpn_proposal_num = 2000
+        self.train_before_rpn_proposal_num = -1  #12000
+        self.train_after_rpn_proposal_num = 2000
+        self.test_before_rpn_proposal_num = -1  #6000
+        self.test_after_rpn_proposal_num = 2000  #300
 
         self.pos_iou_thr = 0.5
         self.neg_iou_thr = 0.5
@@ -42,6 +45,8 @@ class FasterRCNN(nn.Module):
         self.bbox_nms_score_thr = 0.05
         self.bbox_nms_max_num = 300
 
+        self.rpn_min_size = 1  # 16
+
 
     def forward(self, img, img_meta, gt_bboxes=None, gt_labels=None):
         feat = self.backbone(img)
@@ -53,16 +58,21 @@ class FasterRCNN(nn.Module):
 
         # filter out small bbox size
         for pi, proposal in enumerate(proposals):
-            small_bbox_ind = ((proposal[..., [2]] < 1) | (proposal[..., [3]] < 1))
+            small_bbox_ind = ((proposal[..., [2]] < self.rpn_min_size) | (proposal[..., [3]] < self.rpn_min_size))
             proposals_ignore[pi][small_bbox_ind.view(-1)] = 1
-        proposals, obj_scores = nms_wrapper(proposals, obj_cls_scores[..., 1], proposals_ignore, nms_iou_thr=self.rpn_nms_thr_iou)
-
-        # extract 2000 proposals
-        for b in range(len(proposals)):
-            if proposals[b].size(0) > self.rpn_proposal_num:
-                proposals[b] = proposals[b][:self.rpn_proposal_num]
 
         if self.training:  # train
+            proposals, obj_scores = nms_wrapper(proposals,
+                                                obj_cls_scores[..., 1],
+                                                proposals_ignore,
+                                                nms_iou_thr=self.rpn_nms_thr_iou,
+                                                num_before=self.train_before_rpn_proposal_num,
+                                                num_after=self.train_after_rpn_proposal_num)
+
+            for b in range(len(proposals)):
+                if proposals[b].size(0) > 2000:
+                    proposals[b] = proposals[b][:2000]
+
             # assign and sample proposals
             cls_losses, reg_losses = 0, 0
             for b in range(len(proposals)):
@@ -102,6 +112,17 @@ class FasterRCNN(nn.Module):
             return obj_cls_losses, obj_reg_losses, cls_losses, reg_losses
 
         else:  # test
+            proposals, obj_scores = nms_wrapper(proposals,
+                                                obj_cls_scores[..., 1],
+                                                proposals_ignore,
+                                                nms_iou_thr=self.rpn_nms_thr_iou,
+                                                num_before=self.test_before_rpn_proposal_num,
+                                                num_after=self.test_after_rpn_proposal_num)
+
+            for b in range(len(proposals)):
+                if proposals[b].size(0) > 2000:
+                    proposals[b] = proposals[b][:2000]
+
             # convert to rois
             det_bboxes_results = []
             det_labels_results = []

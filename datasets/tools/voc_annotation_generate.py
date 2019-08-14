@@ -1,6 +1,6 @@
 import argparse
 import os
-import xml.dom.minidom
+import xml.etree.ElementTree as ET
 import json
 from tqdm import tqdm
 
@@ -23,25 +23,24 @@ def process_set(imgset_file, anno_root, output_root):
                 print('Warning: not exist path "%s"!!!'%xml_anno_path)
                 continue
             # parsing xml
-            DOMTree = xml.dom.minidom.parse(xml_anno_path)
-            annotation = DOMTree.documentElement
-            img_filename = annotation.getElementsByTagName('filename')[0].childNodes[0].data
-            img_width = int(annotation.getElementsByTagName('size')[0].getElementsByTagName('width')[0].childNodes[0].data)
-            img_height = int(annotation.getElementsByTagName('size')[0].getElementsByTagName('height')[0].childNodes[0].data)
+            tree = ET.parse(xml_anno_path)
+            img_filename = tree.find('filename').text
+            img_width = int(tree.find('size').find('width').text)
+            img_height = int(tree.find('size').find('height').text)
             bboxes = []
-            for obj in annotation.getElementsByTagName('object'):
+            for obj in tree.findall('object'):
                 bboxes.append(dict(
-                    name=obj.getElementsByTagName('name')[0].childNodes[0].data,
-                    pose=obj.getElementsByTagName('pose')[0].childNodes[0].data,
-                    truncated=int(obj.getElementsByTagName('truncated')[0].childNodes[0].data),
-                    difficult=int(obj.getElementsByTagName('difficult')[0].childNodes[0].data),
-                    bbox=[
-                        int(obj.getElementsByTagName('bndbox')[0].getElementsByTagName('xmin')[0].childNodes[0].data),
-                        int(obj.getElementsByTagName('bndbox')[0].getElementsByTagName('ymin')[0].childNodes[0].data),
-                        int(obj.getElementsByTagName('bndbox')[0].getElementsByTagName('xmax')[0].childNodes[0].data),
-                        int(obj.getElementsByTagName('bndbox')[0].getElementsByTagName('ymax')[0].childNodes[0].data)
-                    ]
-                ))
+                        name=obj.find('name').text,
+                        pose=obj.find('pose').text,
+                        truncated=int(obj.find('truncated').text),
+                        difficult=int(obj.find('difficult').text),
+                        bbox=[
+                            int(obj.find('bndbox').find('xmin').text),
+                            int(obj.find('bndbox').find('ymin').text),
+                            int(obj.find('bndbox').find('xmax').text),
+                            int(obj.find('bndbox').find('ymax').text)
+                        ]
+                    ))
             annotations.append(dict(
                 filename=img_filename,
                 width=img_width,

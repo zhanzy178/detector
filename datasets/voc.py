@@ -1,22 +1,17 @@
 from torch.utils.data import Dataset
 from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
+from cvtools.bbox import xyxy2xywh
 import os
 import numpy as np
 import cv2
 import json
-
+from cvtools.evaluate.voc_eval import VOC_CLASS
 
 class VOCDataset(Dataset):
     def __init__(self, ann_file, img_root, valid_mode=False):
         super(VOCDataset, self).__init__()
-        self.class_name = ['aeroplane', 'boat', 'car', 'cow',
-                           'horse', 'pottedplant', 'train',
-                           'bicycle', 'bottle', 'cat',
-                           'diningtable', 'motorbike',
-                           'sheep', 'bird',
-                           'bus', 'chair', 'dog',
-                           'person', 'sofa', 'tvmonitor']
+        self.class_name = VOC_CLASS
 
         self.img_root = img_root
         self.valid_mode = valid_mode
@@ -48,6 +43,7 @@ class VOCDataset(Dataset):
         data.update(dict(difficults=anno['difficults']))
 
         img_meta['img_id'] = anno['img_id']
+        img_meta['filename'] = os.path.splitext(anno['filename'])[0]
         data.update(dict(img_meta=img_meta))
 
         return data
@@ -60,10 +56,10 @@ class VOCDataset(Dataset):
         for ann in annotations:
             bboxes = np.array([b['bbox'] for b in ann['bboxes']], dtype=np.float32)
             difficults = np.array([b['difficult'] for b in ann['bboxes']], dtype=np.int32)
+            labels = np.array([self.class_name.index(b['name'])+1 for b in ann['bboxes']], dtype=np.int64)
             if bboxes.shape[0] != 0:
                 # convert to format of xywh
-                bboxes[:, [2, 3]] = bboxes[:, [2, 3]] - bboxes[:, [0, 1]]
-                bboxes[:, [0, 1]] += bboxes[:, [2, 3]] / 2
+                bboxes = xyxy2xywh(bboxes)
 
             for b in ann['bboxes']:
                 assert self.class_name.index(b['name']) != -1
@@ -75,7 +71,7 @@ class VOCDataset(Dataset):
                 height=ann['height'],
                 bboxes=bboxes,
                 difficults=difficults,
-                labels=np.array([self.class_name.index(b['name'])+1 for b in ann['bboxes']], dtype=np.int64)
+                labels=labels
                 # backgroud as 0 label
             ))
 

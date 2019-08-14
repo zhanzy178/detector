@@ -1,6 +1,7 @@
 *__pycache__*
 
 work_dirs
+output*
 
 models/roi_pool/build
 

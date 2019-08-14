@@ -2,7 +2,7 @@
 work_dir = 'work_dirs/faster_rcnn_vgg_voc07_news'
 epoch=120
 img_batch_size=1
-load_from = None
+load_from = '/home/zzy/Projects/detector/work_dirs/faster_rcnn_vgg_voc07_news/epoch_6.pth'
 
 # ----------------- model -----------------
 detector = dict(
@@ -20,6 +20,12 @@ dataset = dict(
         valid_mode=False
     ),
     val=dict(
+        type='VOCDataset',
+        ann_file=data_root + 'test_anno.json',
+        img_root=data_root + 'JPEGImages',
+        valid_mode=True
+    ),
+    test=dict(
         type='VOCDataset',
         ann_file=data_root + 'test_anno.json',
         img_root=data_root + 'JPEGImages',

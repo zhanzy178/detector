@@ -6,7 +6,7 @@ import os
 import numpy as np
 import cv2
 import json
-from cvtools.evaluate.voc_eval import VOC_CLASS
+from cvtools.evaluate import VOC_CLASS
 
 class VOCDataset(Dataset):
     def __init__(self, ann_file, img_root, valid_mode=False):

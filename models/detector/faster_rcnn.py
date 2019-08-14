@@ -28,10 +28,10 @@ class FasterRCNN(nn.Module):
         self.roi_pool = RoIPool(output_size=(7, 7), spatial_scale=1.0/self.strides[0])
         self.bbox_head = BBoxHead(num_classes=num_classes)
 
-        self.train_before_rpn_proposal_num = -1  #12000
+        self.train_before_rpn_proposal_num = 12000
         self.train_after_rpn_proposal_num = 2000
-        self.test_before_rpn_proposal_num = -1  #6000
-        self.test_after_rpn_proposal_num = 2000  #300
+        self.test_before_rpn_proposal_num = 6000
+        self.test_after_rpn_proposal_num = 300
 
         self.pos_iou_thr = 0.5
         self.neg_iou_thr = 0.5
@@ -45,7 +45,7 @@ class FasterRCNN(nn.Module):
         self.bbox_nms_score_thr = 0.05
         self.bbox_nms_max_num = 300
 
-        self.rpn_min_size = 1  # 16
+        self.rpn_min_size = 16
 
 
     def forward(self, img, img_meta, gt_bboxes=None, gt_labels=None):
@@ -68,10 +68,6 @@ class FasterRCNN(nn.Module):
                                                 nms_iou_thr=self.rpn_nms_thr_iou,
                                                 num_before=self.train_before_rpn_proposal_num,
                                                 num_after=self.train_after_rpn_proposal_num)
-
-            for b in range(len(proposals)):
-                if proposals[b].size(0) > 2000:
-                    proposals[b] = proposals[b][:2000]
 
             # assign and sample proposals
             cls_losses, reg_losses = 0, 0
@@ -118,10 +114,6 @@ class FasterRCNN(nn.Module):
                                                 nms_iou_thr=self.rpn_nms_thr_iou,
                                                 num_before=self.test_before_rpn_proposal_num,
                                                 num_after=self.test_after_rpn_proposal_num)
-
-            for b in range(len(proposals)):
-                if proposals[b].size(0) > 2000:
-                    proposals[b] = proposals[b][:2000]
 
             # convert to rois
             det_bboxes_results = []

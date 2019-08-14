@@ -1,8 +1,8 @@
 # ----------------- train setting -----------------
-work_dir = 'work_dirs/faster_rcnn_vgg_voc07_news'
+work_dir = 'work_dirs/faster_rcnn_vgg_voc07'
 epoch=120
 img_batch_size=1
-load_from = '/home/zzy/Projects/detector/work_dirs/faster_rcnn_vgg_voc07_news/epoch_6.pth'
+load_from = None
 
 # ----------------- model -----------------
 detector = dict(

@@ -12,7 +12,7 @@ import numpy as np
 import torch
 
 from voc_eval import voc_eval
-from cvtools.evaluate.voc_eval import VOC_CLASS
+from cvtools.evaluate import VOC_CLASS
 
 
 def test(cfg, checkpoint, result, eval):
@@ -22,8 +22,29 @@ def test(cfg, checkpoint, result, eval):
 
         detector = build_detector(cfg.detector)
         detector.cuda()
-        assert os.path.exists(checkpoint)
-        load_checkpoint(detector, checkpoint)
+        # assert os.path.exists(checkpoint)
+        # load_checkpoint(detector, checkpoint)
+        state_dict = torch.load('/home/zzy/Downloads/faster_rcnn_1_6_10021.pth')
+        dstate_dict = detector.state_dict()
+
+        key_mapper = {
+            'backbone.features.0.weight':'RCNN_base.0.weight', 'backbone.features.0.bias':'RCNN_base.0.bias', 'backbone.features.2.weight':'RCNN_base.2.weight',
+            'backbone.features.2.bias':'RCNN_base.2.bias',   'backbone.features.5.weight':'RCNN_base.5.weight', 'backbone.features.5.bias':'RCNN_base.5.bias',
+            'backbone.features.7.weight':'RCNN_base.7.weight',   'backbone.features.7.bias':'RCNN_base.7.bias', 'backbone.features.10.weight':'RCNN_base.10.weight',
+            'backbone.features.10.bias':'RCNN_base.10.bias', 'backbone.features.12.weight':'RCNN_base.12.weight', 'backbone.features.12.bias':'RCNN_base.12.bias',
+            'backbone.features.14.weight':'RCNN_base.14.weight', 'backbone.features.14.bias':'RCNN_base.14.bias', 'backbone.features.17.weight':'RCNN_base.17.weight',
+            'backbone.features.17.bias':'RCNN_base.17.bias', 'backbone.features.19.weight':'RCNN_base.19.weight', 'backbone.features.19.bias':'RCNN_base.19.bias',
+            'backbone.features.21.weight':'RCNN_base.21.weight', 'backbone.features.21.bias':'RCNN_base.21.bias', 'backbone.features.24.weight':'RCNN_base.24.weight',
+            'backbone.features.24.bias':'RCNN_base.24.bias', 'backbone.features.26.weight':'RCNN_base.26.weight', 'backbone.features.26.bias':'RCNN_base.26.bias',
+            'backbone.features.28.weight':'RCNN_base.28.weight', 'backbone.features.28.bias':'RCNN_base.28.bias', 'rpn_head.conv.weight':'RCNN_rpn.RPN_Conv.weight', 'rpn_head.conv.bias':'RCNN_rpn.RPN_Conv.bias',
+            'rpn_head.obj_cls.weight':'RCNN_rpn.RPN_cls_score.weight', 'rpn_head.obj_cls.bias':'RCNN_rpn.RPN_cls_score.bias', 'rpn_head.obj_reg.weight':'RCNN_rpn.RPN_bbox_pred.weight', 'rpn_head.obj_reg.bias':'RCNN_rpn.RPN_bbox_pred.bias',
+            'bbox_head.shared_layers.0.weight':'RCNN_top.0.weight', 'bbox_head.shared_layers.0.bias':'RCNN_top.0.bias', 'bbox_head.shared_layers.3.weight':'RCNN_top.3.weight',
+            'bbox_head.shared_layers.3.bias':'RCNN_top.3.bias', 'bbox_head.cls_fc.weight':'RCNN_cls_score.weight', 'bbox_head.cls_fc.bias':'RCNN_cls_score.bias', 'bbox_head.reg_fc.weight':'RCNN_bbox_pred.weight',
+            'bbox_head.reg_fc.bias':'RCNN_bbox_pred.bias'
+        }
+        for k in list(dstate_dict.keys()):
+            dstate_dict[k] = state_dict['model'][key_mapper[k]]
+        detector.load_state_dict(dstate_dict)
 
         dataset = build_dataset(cfg.dataset.test)
         dataloader = DataLoader(dataset)
@@ -60,20 +81,17 @@ def test(cfg, checkpoint, result, eval):
         aps = []
         imagesetfile = os.path.join(cfg.data_root, 'ImageSets/Main', 'test.txt')
         annopath = os.path.join(cfg.data_root, 'Annotations', '{}.xml')
-        class_result=dict()
-        for cls in class_name:
+        for ci, cls in enumerate(class_name):
             rec, prec, ap = voc_eval(os.path.join(result, cls+'.txt'),
                      annopath,
                      imagesetfile,
                      cls,
                      os.path.join(result, '.cache'),
                      use_07_metric=False)
-
             aps.append(ap)
 
             print('AP for {} = {:.4f}'.format(cls, ap))
         print('Mean AP = {:.4f}'.format(np.mean(aps)))
-
 
 if __name__ == '__main__':
     parser, cfg = Config.auto_argparser('Config file for detector, dataset')

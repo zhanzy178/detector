@@ -201,3 +201,22 @@ def vgg19_bn(pretrained=False, progress=True, **kwargs):
         progress (bool): If True, displays a progress bar of the download to stderr
     """
     return _vgg('vgg19_bn', 'E', True, pretrained, progress, **kwargs)
+
+
+def load_vgg_fc(model, pretrained='vgg16_bn'):
+    state_dict = load_state_dict_from_url(model_urls[pretrained],
+                                          progress=True)
+
+    for k in list(state_dict.keys()):
+        if not 'classifier' in k:
+            state_dict.pop(k)
+
+    model_state_dict = model.state_dict()
+
+    for i, k in enumerate(list(state_dict.keys())):
+        mk = list(model_state_dict.keys())[i]
+        if state_dict[k].size() == model_state_dict[mk].size():
+            model_state_dict[mk] = state_dict[k]
+
+    model.load_state_dict(model_state_dict)
+

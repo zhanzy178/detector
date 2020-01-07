@@ -53,7 +53,7 @@ class VOCDataset(Dataset):
 
         annotations_list = []
         for ann in annotations:
-            bboxes = np.array([b['bbox'] for b in ann['bboxes']], dtype=np.float32)
+            bboxes = np.array([b['bbox'] for b in ann['bboxes']], dtype=np.float32)-1
             difficults = np.array([b['difficult'] for b in ann['bboxes']], dtype=np.int32)
             labels = np.array([self.class_name.index(b['name'])+1 for b in ann['bboxes']], dtype=np.int64)
             if bboxes.shape[0] != 0:
@@ -99,8 +99,9 @@ class VOCDataset(Dataset):
         img = img.astype(np.float32)
         img_norm_mean = [0.485, 0.456, 0.406]
         img_norm_std = [0.229, 0.224, 0.225]
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  # to rgb
-        img = (img/255.0 - img_norm_mean) / img_norm_std
+#         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  # to rgb
+#         img = (img/255.0 - img_norm_mean) / img_norm_std
+        img = img - [102.9801, 115.9465, 122.7717]
         img = img.transpose((2, 0, 1))
 
         img = img.astype(np.float32)

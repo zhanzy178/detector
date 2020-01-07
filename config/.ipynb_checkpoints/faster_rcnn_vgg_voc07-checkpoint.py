@@ -1,5 +1,5 @@
 # ----------------- train setting -----------------
-work_dir = 'work_dirs/faster_rcnn_vgg_voc07_flipped'
+work_dir = 'work_dirs/faster_rcnn_vgg_voc07_target_normal'
 epoch=120
 img_batch_size=1
 load_from = None
@@ -40,23 +40,23 @@ optimizer = dict(
     lr=0.001,
     momentum=0.9,
     weight_decay=0.0005,
-    mult=dict(
-        bias=2
-    )
+#     mult=dict(
+#         bias=2
+#     )
 )
 
 # ----------------- training hook -----------------
 lr_hook_cfg=dict(
     policy='step',
     by_epoch=False,
-    step=[100000]
+    step=[50000]
 )
 optimizer_hook_cfg=dict(
     interval=1
 )
 checkpoint_hook_cfg=dict(interval=1)
 log_hooks_cfg=dict(
-    interval=500,
+    interval=50,
     hooks=[
         dict(type='VOCEvalLoggerHook'),
         dict(type='TextLoggerHook'),
